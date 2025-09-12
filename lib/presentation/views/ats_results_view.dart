@@ -43,6 +43,10 @@ class _AtsResultsViewState extends State<AtsResultsView> {
   final List<_ChatMessage> _messages = <_ChatMessage>[];
   List<String> _suggested = <String>[];
   bool _isDragOver = false;
+  bool _isInterviewMode = false;
+  List<Map<String, dynamic>> _interviewStages = [];
+  bool _showEmailDetails = false;
+  Map<String, dynamic>? _emailData;
 
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
@@ -254,13 +258,12 @@ class _AtsResultsViewState extends State<AtsResultsView> {
         } catch (_) {}
       },
       builder: (context, candidate, rejects) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-            decoration: BoxDecoration(
-              color: AppTheme.backgroundWhite,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
+        return Container(
+          height: MediaQuery.of(context).size.height - 200, // Fixed height to prevent layout issues
+          decoration: BoxDecoration(
+            color: AppTheme.backgroundWhite,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.06),
                 blurRadius: 20,
@@ -420,9 +423,12 @@ class _AtsResultsViewState extends State<AtsResultsView> {
                       ),
                     ),
                   _buildGradientDivider(),
+                  // Interview Stages UI
+                  if (_isInterviewMode || _interviewStages.isNotEmpty)
+                    _buildInterviewStages(),
                   Expanded(
                     child: ListView.builder(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       itemCount: _messages.length,
                       itemBuilder: (context, index) {
                         final m = _messages[index];
@@ -447,8 +453,8 @@ class _AtsResultsViewState extends State<AtsResultsView> {
                                       curve: Curves.easeOutBack,
                                     )),
                                     child: Container(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.all(16),
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
                                         color: m.isUser 
                                             ? const Color(0xFF4285F4).withOpacity(0.1)
@@ -468,12 +474,13 @@ class _AtsResultsViewState extends State<AtsResultsView> {
                                           ),
                                         ],
                                       ),
-                                      child: Text(
+                                      child: SelectableText(
                                         m.text,
                                         style: TextStyle(
                                           color: m.isUser ? const Color(0xFF4285F4) : AppTheme.primaryBlack,
                                           fontWeight: FontWeight.w500,
                                           fontSize: 14,
+                                          height: 1.4,
                                         ),
                                       ),
                                     ),
@@ -565,7 +572,17 @@ class _AtsResultsViewState extends State<AtsResultsView> {
   Future<void> _sendQuery(String text) async {
     if (text.trim().isEmpty) return;
     _safeSetState(() => _messages.add(_ChatMessage(text: text, isUser: true)));
+    
     try {
+      // Check for interview intent first
+      final hasInterviewIntent = await _atsService.checkInterviewIntent(text);
+      
+      if (hasInterviewIntent) {
+        await _handleInterviewScheduling(text);
+        return;
+      }
+
+      // Regular RAG query
       final res = await _atsService.ragQuery(
         workspaceId: _workspaceId,
         message: text,
@@ -577,6 +594,281 @@ class _AtsResultsViewState extends State<AtsResultsView> {
     } catch (e) {
       _safeSetState(() => _messages.add(_ChatMessage(text: 'Error: $e', isUser: false)));
     }
+  }
+
+  Future<void> _handleInterviewScheduling(String message) async {
+    _safeSetState(() {
+      _isInterviewMode = true;
+      _interviewStages = [];
+    });
+
+    try {
+      final result = await _atsService.scheduleInterview(
+        workspaceId: _workspaceId,
+        resumeId: _activeResume!.id,
+        message: message,
+      );
+
+      if (result['success'] == true) {
+        _safeSetState(() {
+          _interviewStages = List<Map<String, dynamic>>.from(result['stages'] ?? []);
+          _emailData = result['email_data'];
+          _showEmailDetails = result['manual_email_option'] == true || 
+                             result['email_result']?['manual_required'] == true;
+        });
+
+        // Add the response to chat
+        String responseText = result['answer'] ?? 'Interview scheduling completed';
+        _safeSetState(() {
+          _messages.add(_ChatMessage(
+            text: responseText,
+            isUser: false,
+          ));
+        });
+      } else {
+        _safeSetState(() {
+          _messages.add(_ChatMessage(
+            text: 'Interview scheduling failed: ${result['error'] ?? 'Unknown error'}',
+            isUser: false,
+          ));
+        });
+      }
+    } catch (e) {
+      _safeSetState(() {
+        _messages.add(_ChatMessage(
+          text: 'Interview scheduling error: $e',
+          isUser: false,
+        ));
+      });
+    } finally {
+      _safeSetState(() {
+        _isInterviewMode = false;
+      });
+    }
+  }
+
+  Widget _buildInterviewStages() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(
+        maxHeight: 400, // Prevent excessive height
+      ),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+          Row(
+            children: [
+              const Icon(Icons.schedule, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Interview Scheduling Agent',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (_isInterviewMode)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ..._interviewStages.map((stage) => _buildStageItem(stage)).toList(),
+          if (_showEmailDetails && _emailData != null)
+            _buildEmailDetails(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStageItem(Map<String, dynamic> stage) {
+    final status = stage['status'] as String?;
+    final message = stage['message'] as String?;
+    final stageName = stage['stage'] as String?;
+    
+    Color statusColor;
+    IconData statusIcon;
+    
+    switch (status) {
+      case 'completed':
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        break;
+      case 'failed':
+        statusColor = Colors.red;
+        statusIcon = Icons.error;
+        break;
+      case 'in_progress':
+        statusColor = Colors.orange;
+        statusIcon = Icons.hourglass_empty;
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusIcon = Icons.radio_button_unchecked;
+    }
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(statusIcon, color: statusColor, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  stageName?.replaceAll('_', ' ').toUpperCase() ?? 'STAGE',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message ?? '',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (status == 'in_progress')
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmailDetails() {
+    final emailData = _emailData!;
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Email Details for Manual Sending:',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildEmailField('To:', emailData['to'] ?? ''),
+          _buildEmailField('Subject:', emailData['subject'] ?? ''),
+          const SizedBox(height: 8),
+          const Text(
+            'Body:',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              emailData['body'] ?? '',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmailField(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildBody(BuildContext context) {
@@ -689,65 +981,40 @@ class _AtsResultsViewState extends State<AtsResultsView> {
       builder: (context, screenSize) {
         return Padding(
           padding: ResponsiveUtils.getResponsivePadding(context),
-          child: Column(
-            children: [
-              Expanded(
-                child: TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 800),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Opacity(
-                      opacity: value,
-                      child: Transform.translate(
-                        offset: Offset(0, 30 * (1 - value)),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 2, child: _buildCandidatesList(context)),
-                            SizedBox(
-                              width: ResponsiveUtils.getResponsiveSpacing(
-                                context,
-                                mobile: 12,
-                                tablet: 16,
-                                desktop: 24,
-                                largeDesktop: 28,
-                                extraLargeDesktop: 32,
-                              ),
-                            ),
-                            Expanded(
-                              flex: 1,
-                              child: Center(
-                                child: SizedBox(
-                                  width: 600,
-                                  child: _chatMode ? _buildChatPanel(context) : _buildFilters(context),
-                                ),
-                              ),
-                            ),
-                          ],
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 800),
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.translate(
+                  offset: Offset(0, 30 * (1 - value)),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 1, child: _buildCandidatesList(context)),
+                      SizedBox(
+                        width: ResponsiveUtils.getResponsiveSpacing(
+                          context,
+                          mobile: 12,
+                          tablet: 16,
+                          desktop: 24,
+                          largeDesktop: 28,
+                          extraLargeDesktop: 32,
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              TweenAnimationBuilder<double>(
-                duration: const Duration(milliseconds: 1000),
-                tween: Tween(begin: 0.0, end: 1.0),
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: 0.8 + (0.2 * value),
-                    child: Opacity(
-                      opacity: value,
-                      child: Align(
-                        alignment: Alignment.center,
-                        child: _buildVisualizeButton(context),
+                      Expanded(
+                        flex: 3,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: _chatMode ? _buildChatPanel(context) : _buildFilters(context),
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         );
       },

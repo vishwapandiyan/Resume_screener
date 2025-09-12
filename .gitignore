@@ -68,3 +68,9 @@ chroma_db/
 # API keys and secrets
 .env
 *.key
+
+# Google OAuth credentials and tokens
+Google-Calender-Agent/oauth2_credentials.json
+Google-Calender-Agent/token.pickle
+**/oauth2_credentials.json
+**/token.pickle

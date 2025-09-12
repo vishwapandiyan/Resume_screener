@@ -29,6 +29,9 @@ _llama_client = None
 _chroma_client: chromadb.PersistentClient | None = None
 _sentence_model = None
 
+# Interview Agent
+_interview_agent = None
+
 # In-memory conversation store: {(workspace_id, chat_id): ConversationBufferMemory}
 _memories: Dict[Tuple[str, str], Any] = {}
 
@@ -37,10 +40,20 @@ _job_descriptions: Dict[str, str] = {}
 
 
 def init_rag_blueprint(app, llama_client, chroma_client, sentence_model):
-    global _llama_client, _chroma_client, _sentence_model
+    global _llama_client, _chroma_client, _sentence_model, _interview_agent
     _llama_client = llama_client
     _chroma_client = chroma_client
     _sentence_model = sentence_model
+    
+    # Initialize Interview Agent
+    try:
+        from interview_agent import InterviewSchedulingAgent
+        _interview_agent = InterviewSchedulingAgent()
+        print("✅ Interview Agent initialized")
+    except Exception as e:
+        print(f"⚠️ Interview Agent initialization failed: {e}")
+        _interview_agent = None
+    
     app.register_blueprint(rag_bp)
 
 
@@ -258,13 +271,13 @@ def rag_suggest():
             
             prompt = (
                 f"{candidate_context}"
-                "As an HR assistant, generate 4 intelligent, specific questions that would help evaluate this candidate for a technical role.\n\n"
-                "Focus on:\n"
-                "- Technical competency and project depth\n"
-                "- Problem-solving abilities and achievements\n"
-                "- Cultural fit and communication skills\n"
-                "- Potential red flags or areas of concern\n\n"
-                "Make questions specific, actionable, and tailored to what you can see in their background.\n"
+                "Generate 4 conversational questions an HR person might ask about this candidate during a casual discussion.\n\n"
+                "Make them sound natural and conversational, like:\n"
+                "- 'How well do they match our job requirements?'\n"
+                "- 'What are their strongest technical skills for this role?'\n"
+                "- 'Any concerns about their experience level?'\n"
+                "- 'What makes them stand out for this position?'\n\n"
+                "Keep them short, friendly, and focused on practical hiring decisions.\n"
                 "Return only the 4 questions, separated by commas."
             )
             completion = _llama_client.chat.completions.create(
@@ -282,10 +295,10 @@ def rag_suggest():
 
     if not questions:
         questions = [
-            "What are this candidate's strongest technical skills and how do they apply to our role?",
-            "What specific projects or achievements demonstrate their problem-solving abilities?",
-            "How well does their experience align with our team's needs and company culture?",
-            "Are there any gaps in their background that we should address in the interview?",
+            "How well do they match our job requirements?",
+            "What are their strongest technical skills for this role?",
+            "Any concerns about their experience level?",
+            "What makes them stand out for this position?",
         ]
 
     return jsonify({'success': True, 'workspace_id': workspace_id, 'resume_id': resume_id, 'questions': questions[:4]})
@@ -435,62 +448,183 @@ def rag_query():
         for item in ranked
     ]
 
-    # Synthesize answer
+    # Initialize answer variable
     answer = None
-    try:
-        if _llama_client and contexts:
-            # Extract candidate info from metadata for context
-            candidate_info = ""
+    
+    # Check for interview scheduling intent
+    interview_intent = False
+    if _interview_agent:
+        interview_intent = _interview_agent.detect_interview_intent(message)
+    
+    # If interview intent detected, process interview scheduling
+    if interview_intent and _interview_agent:
+        try:
+            # Get candidate info for interview scheduling
+            candidate_info = {}
             if snippets:
                 meta = snippets[0].get('metadata', {})
-                candidate_name = meta.get('candidate', 'This candidate')
+                candidate_info = {
+                    'candidate': meta.get('candidate', 'Candidate'),
+                    'email': meta.get('email', ''),
+                    'skills': meta.get('skills', ''),
+                    'experience': meta.get('experience', '')
+                }
+            
+            # Get job information
+            job_info = {
+                'job_title': 'Software Developer',
+                'company': 'Our Company'
+            }
+            
+            if workspace_id in _job_descriptions:
+                job_info['job_description'] = _job_descriptions[workspace_id]
+            
+            # Process interview request
+            interview_result = _interview_agent.process_interview_request(message, candidate_info, job_info)
+            
+            if interview_result['success']:
+                # Format the response with stages
+                stages_text = "\n\n".join([
+                    f"**{stage['stage'].replace('_', ' ').title()}:** {stage['message']}"
+                    for stage in interview_result.get('stages', [])
+                ])
+                
+                answer = f"🎯 **Interview Scheduling Activated!**\n\n{stages_text}\n\n"
+                
+                if interview_result.get('booking_result'):
+                    booking = interview_result['booking_result']
+                    answer += f"📅 **Interview Details:**\n"
+                    answer += f"• Date & Time: {booking['start_time']}\n"
+                    answer += f"• Duration: 1 hour\n"
+                    answer += f"• Event ID: {booking['event_id']}\n"
+                    if booking.get('meeting_link'):
+                        answer += f"• Meeting Link: {booking['meeting_link']}\n"
+                
+                if interview_result.get('email_result', {}).get('success'):
+                    answer += f"\n✅ **Email sent successfully to {candidate_info.get('email', 'candidate')}!**"
+                elif interview_result.get('email_result', {}).get('manual_required') or interview_result.get('manual_email_option'):
+                    answer += f"\n⚠️ **Email sending failed. Manual sending required.**"
+                    answer += f"\n📧 **Email Details for Manual Sending:**\n"
+                    email_data = interview_result.get('email_data', {})
+                    answer += f"• To: {email_data.get('to', '')}\n"
+                    answer += f"• Subject: {email_data.get('subject', '')}\n"
+                    answer += f"• Body: {email_data.get('body', '')[:200]}...\n"
+                    answer += f"\n💡 **Tip:** Copy the email details above and send manually via your email client."
+            else:
+                answer = f"❌ **Interview scheduling failed:** {interview_result.get('error', 'Unknown error')}"
+                
+        except Exception as e:
+            print(f"Error in interview processing: {e}")
+            answer = f"❌ **Interview scheduling error:** {str(e)}"
+    
+    # Synthesize answer
+    if not answer:
+        try:
+            if _llama_client and contexts:
+                # Extract candidate info from metadata for context
+                candidate_info = ""
+                if snippets:
+                    meta = snippets[0].get('metadata', {})
+                    candidate_name = meta.get('candidate', 'This candidate')
                 candidate_email = meta.get('email', '')
                 candidate_skills = meta.get('skills', '')
                 candidate_experience = meta.get('experience', '')
                 
-                candidate_info = f"Candidate: {candidate_name}"
+                candidate_info = f"**Candidate:** {candidate_name}"
                 if candidate_email:
                     candidate_info += f" ({candidate_email})"
                 if candidate_skills:
-                    candidate_info += f"\nKey Skills: {candidate_skills}"
+                    candidate_info += f"\n**Skills:** {candidate_skills}"
                 if candidate_experience:
-                    candidate_info += f"\nExperience: {candidate_experience}"
+                    candidate_info += f"\n**Experience:** {candidate_experience}"
                 candidate_info += "\n\n"
             
             # Get job description context
             jd_context = ""
             if workspace_id in _job_descriptions:
                 jd = _job_descriptions[workspace_id]
-                jd_context = f"JOB DESCRIPTION:\n{jd}\n\n"
+                jd_context = f"**Job Requirements:** {jd}\n\n"
             
-            prompt = (
-                "You are an intelligent HR hiring assistant. Your role is to help HR professionals make informed decisions about candidates.\n\n"
-                "Guidelines for your responses:\n"
-                "- Be conversational, professional, and helpful\n"
-                "- Provide actionable insights for HR decision-making\n"
-                "- Highlight strengths, potential concerns, and recommendations\n"
-                "- Use specific examples from the resume when available\n"
-                "- Compare candidate qualifications against the job requirements\n"
-                "- Be honest about limitations in the information\n"
-                "- Structure your response clearly with bullet points or sections when helpful\n"
-                "- End with a brief recommendation or next steps when appropriate\n\n"
-                f"{jd_context}"
-                f"{candidate_info}"
-                f"HR Question: {message}\n\n"
-                "Resume Content:\n" + "\n---\n".join(contexts[:5]) + "\n\n"
-                "Please provide a comprehensive, HR-focused response that helps evaluate this candidate against the job requirements:"
+            # Get conversation history
+            conversation_history = ""
+            if memory is not None:
+                try:
+                    # Get the conversation history from memory
+                    history = memory.chat_memory.messages
+                    if len(history) > 1:  # More than just the current message
+                        conversation_history = "\n**Previous Conversation:**\n"
+                        for msg in history[:-1]:  # Exclude the current message
+                            role = "HR" if msg.type == "human" else "Assistant"
+                            conversation_history += f"{role}: {msg.content}\n"
+                        conversation_history += "\n"
+                except Exception as e:
+                    print(f"Error getting conversation history: {e}")
+            
+            # Conversational HR Chat Prompt
+            HR_CHAT_PROMPT = """You are a helpful HR assistant having a casual conversation about a candidate. Be conversational, friendly, and direct.
+
+JOB REQUIREMENTS:
+{jd_context}
+
+CANDIDATE INFO:
+{candidate_info}
+
+RESUME DETAILS:
+{resume_contexts}
+
+{conversation_history}HR QUESTION: "{message}"
+
+INSTRUCTIONS:
+- Compare the candidate directly against the job requirements
+- Be specific about how their skills/experience match what we need
+- Point out specific strengths and any gaps you notice
+- Use "I think", "In my view", "This candidate seems..."
+- Keep it conversational but informative (2-4 sentences)
+- Don't ask generic follow-up questions - give specific insights
+- Reference specific skills, technologies, or experiences from both the JD and resume
+- Be honest about fit and potential concerns
+- Build on the previous conversation context if provided
+
+EXAMPLE RESPONSES:
+- "I think this candidate looks really promising! They have solid Flutter experience which matches our mobile dev needs, and their GitHub shows some nice projects. The internship at that startup gives them good real-world experience."
+- "Hmm, this one's a bit of a mixed bag. They have the technical skills we need, but I'm not seeing much leadership experience. Might be worth a phone screen to dig deeper."
+- "This candidate seems like a great fit! Their Python background is exactly what we're looking for, and I like that they've worked on similar projects before."
+
+Your response:"""
+
+            prompt = HR_CHAT_PROMPT.format(
+                jd_context=jd_context,
+                candidate_info=candidate_info,
+                resume_contexts="\n---\n".join(contexts[:5]),
+                conversation_history=conversation_history,
+                message=message
             )
-            completion = _llama_client.chat.completions.create(
-                model="meta/llama3-70b-instruct",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=600,
-                stream=False,
-            )
-            answer = completion.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"LLM error: {e}")
-        answer = None
+            
+            # Debug: Print the formatted prompt
+            print(f"DEBUG: Using enhanced prompt with context:")
+            print(f"JD Context: {jd_context[:100]}...")
+            print(f"Candidate Info: {candidate_info[:100]}...")
+            print(f"Resume Contexts: {len(contexts)} contexts")
+            print(f"Conversation History: {conversation_history[:200] if conversation_history else 'None'}...")
+            print(f"Message: {message}")
+            print(f"Memory available: {memory is not None}")
+            if memory:
+                print(f"Memory messages count: {len(memory.chat_memory.messages)}")
+            try:
+                completion = _llama_client.chat.completions.create(
+                    model="meta-llama/Llama-2-70b-chat-hf",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=600,
+                    stream=False,
+                )
+                answer = completion.choices[0].message.content.strip()
+            except Exception as e:
+                print(f"LLM error: {e}")
+                answer = None
+        except Exception as e:
+            print(f"Error in answer synthesis: {e}")
+            answer = None
 
     if not answer:
         # Enhanced fallback answer with JD context
@@ -516,9 +650,47 @@ def rag_query():
                 jd = _job_descriptions[workspace_id]
                 jd_context = f"**Job Requirements:** {jd[:300]}{'...' if len(jd) > 300 else ''}\n\n"
             
-            # Create a helpful fallback response
-            resume_snippet = contexts[0][:300] if contexts else ''
-            answer = f"{jd_context}{candidate_info}**Resume Summary:** {resume_snippet}{'...' if len(resume_snippet) == 300 else ''}\n\n**Analysis:** Based on the available information, I can see this candidate's background. For a more detailed evaluation, please ask specific questions about their technical skills, project experience, or how they might fit the role requirements."
+            # Create a conversational fallback response with JD context and memory
+            resume_snippet = contexts[0][:200] if contexts else ''
+            candidate_name = snippets[0].get('metadata', {}).get('candidate', 'This candidate') if snippets else 'This candidate'
+            
+            # Get JD context for fallback
+            jd_snippet = ""
+            if workspace_id in _job_descriptions:
+                jd = _job_descriptions[workspace_id]
+                jd_snippet = f"Looking at our job requirements for {jd[:100]}{'...' if len(jd) > 100 else ''}, "
+            
+            # Check if this is a follow-up question and get conversation context
+            is_follow_up = memory is not None and len(memory.chat_memory.messages) > 1
+            conversation_context = ""
+            
+            if is_follow_up:
+                try:
+                    # Get the previous conversation to understand context
+                    history = memory.chat_memory.messages
+                    if len(history) >= 2:
+                        # Get the last user message to understand what they're asking about
+                        last_user_msg = None
+                        for msg in reversed(history[:-1]):  # Exclude current message
+                            if msg.type == "human":
+                                last_user_msg = msg.content
+                                break
+                        
+                        if last_user_msg:
+                            conversation_context = f"Regarding your question about '{last_user_msg}', "
+                except Exception as e:
+                    print(f"Error getting conversation context: {e}")
+            
+            # Debug fallback response
+            print(f"DEBUG FALLBACK: is_follow_up={is_follow_up}, conversation_context='{conversation_context}'")
+            if memory:
+                print(f"DEBUG FALLBACK: Memory messages count: {len(memory.chat_memory.messages)}")
+            
+            # Create a more contextual response
+            if is_follow_up and conversation_context:
+                answer = f"{conversation_context}{jd_snippet}I can see {candidate_name} has some relevant experience. From what I can tell, {resume_snippet.lower()}{'...' if len(resume_snippet) == 200 else ''} They seem to have some of the skills we're looking for, but I'd need to know more about their specific experience to give you a better assessment."
+            else:
+                answer = f"{jd_snippet}I can see {candidate_name} has some relevant experience. From what I can tell, {resume_snippet.lower()}{'...' if len(resume_snippet) == 200 else ''} They seem to have some of the skills we're looking for, but I'd need to know more about their specific experience to give you a better assessment."
         else:
             answer = "I don't have enough information about this candidate to provide a helpful response. Could you try asking a more specific question about their skills, experience, or qualifications?"
 
@@ -537,5 +709,137 @@ def rag_query():
         'answer': answer,
         'snippets': snippets,
     })
+
+
+@rag_bp.route('/check-interview-intent', methods=['POST'])
+def check_interview_intent():
+    """Check if the message contains interview scheduling intent"""
+    data = request.get_json() or {}
+    message = data.get('message', '').strip()
+    
+    if not message:
+        return jsonify({'error': 'message is required'}), 400
+    
+    if not _interview_agent:
+        return jsonify({
+            'has_intent': False,
+            'error': 'Interview agent not available'
+        })
+    
+    has_intent = _interview_agent.detect_interview_intent(message)
+    
+    return jsonify({
+        'has_intent': has_intent,
+        'message': message
+    })
+
+
+@rag_bp.route('/schedule-interview', methods=['POST'])
+def schedule_interview():
+    """Schedule an interview for a candidate"""
+    data = request.get_json() or {}
+    workspace_id = data.get('workspace_id', '').strip()
+    resume_id = data.get('resume_id', '').strip()
+    message = data.get('message', '').strip()
+    
+    if not all([workspace_id, resume_id, message]):
+        return jsonify({'error': 'workspace_id, resume_id, and message are required'}), 400
+    
+    if not _interview_agent:
+        return jsonify({
+            'success': False,
+            'error': 'Interview agent not available'
+        })
+    
+    # Get candidate info from ChromaDB
+    try:
+        col = _get_or_create_collection(_collection_name(workspace_id))
+        where = {'resume_id': resume_id}
+        qr = col.get(where=where, include=["metadatas"])
+        metas = (qr or {}).get('metadatas', [])
+        
+        if not metas:
+            return jsonify({
+                'success': False,
+                'error': 'Candidate information not found'
+            })
+        
+        candidate_info = metas[0]
+        
+        # Get job information
+        job_info = {
+            'job_title': 'Software Developer',  # Default, can be enhanced
+            'company': 'Our Company'  # Default, can be enhanced
+        }
+        
+        if workspace_id in _job_descriptions:
+            job_info['job_description'] = _job_descriptions[workspace_id]
+        
+        # Process interview request
+        result = _interview_agent.process_interview_request(message, candidate_info, job_info)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@rag_bp.route('/get-manual-email', methods=['POST'])
+def get_manual_email():
+    """Get email data for manual sending"""
+    data = request.get_json() or {}
+    workspace_id = data.get('workspace_id', '').strip()
+    resume_id = data.get('resume_id', '').strip()
+    interview_details = data.get('interview_details', {})
+    
+    if not all([workspace_id, resume_id, interview_details]):
+        return jsonify({'error': 'workspace_id, resume_id, and interview_details are required'}), 400
+    
+    if not _interview_agent:
+        return jsonify({
+            'success': False,
+            'error': 'Interview agent not available'
+        })
+    
+    # Get candidate info from ChromaDB
+    try:
+        col = _get_or_create_collection(_collection_name(workspace_id))
+        where = {'resume_id': resume_id}
+        qr = col.get(where=where, include=["metadatas"])
+        metas = (qr or {}).get('metadatas', [])
+        
+        if not metas:
+            return jsonify({
+                'success': False,
+                'error': 'Candidate information not found'
+            })
+        
+        candidate_info = metas[0]
+        
+        # Get job information
+        job_info = {
+            'job_title': 'Software Developer',
+            'company': 'Our Company'
+        }
+        
+        if workspace_id in _job_descriptions:
+            job_info['job_description'] = _job_descriptions[workspace_id]
+        
+        # Get manual email data
+        email_data = _interview_agent.get_manual_email_data(candidate_info, job_info, interview_details)
+        
+        return jsonify({
+            'success': True,
+            'email_data': email_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 

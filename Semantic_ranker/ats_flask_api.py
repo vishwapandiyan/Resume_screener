@@ -22,7 +22,11 @@ import chromadb
 from openai import OpenAI
 import PyPDF2
 import docx2txt
+from dotenv import load_dotenv
 warnings.filterwarnings('ignore')
+
+# Load environment variables from .env file
+load_dotenv()
 
 # ML libraries
 import spacy
@@ -165,6 +169,41 @@ def extract_text_from_docx(file_path: str) -> str:
         return text.strip()
     except Exception as e:
         return f"Error extracting DOCX: {str(e)}"
+
+def extract_candidate_name_from_text(text: str) -> str:
+    """Extract candidate name from resume text"""
+    if not text:
+        return "Candidate"
+    
+    # Look for common name patterns at the beginning of the text
+    lines = text.split('\n')[:10]  # Check first 10 lines
+    
+    for line in lines:
+        line = line.strip()
+        if len(line) < 2 or len(line) > 50:  # Skip very short or very long lines
+            continue
+            
+        # Look for lines that might contain a name (2-4 words, title case)
+        words = line.split()
+        if 2 <= len(words) <= 4:
+            # Check if it looks like a name (starts with capital letters)
+            if all(word[0].isupper() and word[1:].islower() for word in words if word.isalpha()):
+                # Skip common non-name words
+                skip_words = {'resume', 'cv', 'curriculum', 'vitae', 'profile', 'summary', 'objective'}
+                if not any(word.lower() in skip_words for word in words):
+                    return ' '.join(words)
+    
+    # Fallback: look for email patterns and extract name from email
+    email_match = re.search(r'([a-zA-Z0-9._%+-]+)@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
+    if email_match:
+        email_name = email_match.group(1)
+        # Clean up email name
+        name = email_name.replace('.', ' ').replace('_', ' ').replace('-', ' ')
+        name = ' '.join(word.capitalize() for word in name.split() if word.isalpha())
+        if name:
+            return name
+    
+    return "Candidate"
 
 def extract_skills_with_regex(text: str) -> str:
     """Enhanced skill extraction using comprehensive keyword matching"""
@@ -585,7 +624,9 @@ def semantic_ranking():
             resume_skills = resume.get('skills', [])
             found_skills = [skill for skill in resume_skills if any(jd_skill.lower() in skill.lower() for jd_skill in jd_skills)]
             
-            candidate_name = resume.get('filename', f'Candidate {i+1}').replace('.pdf', '').replace('.docx', '').replace('_', ' ').title()
+            # Extract candidate name from resume text instead of filename
+            resume_text = resume.get('text', '')
+            candidate_name = extract_candidate_name_from_text(resume_text)
             
             ranked_results.append({
                 'id': resume.get('id', str(uuid.uuid4())),
@@ -1070,13 +1111,285 @@ if __name__ == '__main__':
     print("🌐 Flask API ready!")
     print("📋 Available endpoints:")
     print("  - POST /process-resumes")
-    print("  - POST /semantic-ranking") 
+    print("  - POST /semantic-ranking")
     print("  - POST /filter-resumes")
     print("  - POST /available-skills")
     print("  - POST /extract-text")
     print("  - POST /analyze-resume (NEW)")
+    print("  - POST /generate_job_title (NEW)")
+    print("  - POST /generate_job_description (NEW)")
+    print("  - POST /generate_enhanced_job_title (NEW)")
+    print("  - POST /generate_job_title_suggestions (NEW)")
     print("  - GET  /health")
     
+# ============================================================================
+# LLaMA API Endpoints for Job Title Generation
+# ============================================================================
+
+@app.route('/generate_job_title', methods=['POST'])
+def generate_job_title():
+    """
+    Generate job title using LLaMA API based on job description
+    """
+    try:
+        data = request.get_json()
+        job_description = data.get('job_description', '')
+        
+        if not job_description:
+            return jsonify({'error': 'Job description is required'}), 400
+        
+        # Use LLaMA to generate job title
+        prompt = f"""Generate a professional job title based on this job description. 
+        The title should be concise, industry-standard, and accurately reflect the role.
+        
+        Job Description: {job_description}
+        
+        Return only the job title, nothing else."""
+        
+        try:
+            # Use OpenAI client (assuming it's configured for LLaMA)
+            client = OpenAI(base_url="https://api.together.xyz/v1", api_key="your_together_api_key")
+            completion = client.chat.completions.create(
+                model="meta-llama/Llama-2-70b-chat-hf",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=50,
+            )
+            job_title = completion.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"LLaMA API error: {e}")
+            # Fallback to rule-based generation
+            job_title = generate_fallback_job_title(job_description)
+        
+        return jsonify({'job_title': job_title})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate_job_description', methods=['POST'])
+def generate_job_description():
+    """
+    Generate job description using LLaMA API based on job title
+    """
+    try:
+        data = request.get_json()
+        job_title = data.get('job_title', '')
+        
+        if not job_title:
+            return jsonify({'error': 'Job title is required'}), 400
+        
+        # Use LLaMA to generate job description
+        prompt = f"""Generate a comprehensive job description for this position.
+        Include key responsibilities, required skills, qualifications, and company benefits.
+        
+        Job Title: {job_title}
+        
+        Format as a professional job posting."""
+        
+        try:
+            client = OpenAI(base_url="https://api.together.xyz/v1", api_key="your_together_api_key")
+            completion = client.chat.completions.create(
+                model="meta-llama/Llama-2-70b-chat-hf",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4,
+                max_tokens=500,
+            )
+            job_description = completion.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"LLaMA API error: {e}")
+            # Fallback to template-based generation
+            job_description = generate_fallback_job_description(job_title)
+        
+        return jsonify({'job_description': job_description})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate_enhanced_job_title', methods=['POST'])
+def generate_enhanced_job_title():
+    """
+    Generate enhanced job title with seniority and skills using LLaMA API
+    """
+    try:
+        data = request.get_json()
+        job_description = data.get('job_description', '')
+        include_seniority = data.get('include_seniority', True)
+        include_skills = data.get('include_skills', True)
+        format_type = data.get('format', 'professional')
+        
+        if not job_description:
+            return jsonify({'error': 'Job description is required'}), 400
+        
+        # Enhanced prompt for better job titles
+        prompt = f"""Generate a professional job title based on this job description.
+        Requirements:
+        - Include seniority level if appropriate: {include_seniority}
+        - Include key technologies/skills: {include_skills}
+        - Format: {format_type}
+        - Be specific and industry-standard
+        
+        Job Description: {job_description}
+        
+        Return only the job title, nothing else."""
+        
+        try:
+            client = OpenAI(base_url="https://api.together.xyz/v1", api_key="your_together_api_key")
+            completion = client.chat.completions.create(
+                model="meta-llama/Llama-2-70b-chat-hf",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=100,
+            )
+            job_title = completion.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"LLaMA API error: {e}")
+            # Fallback to enhanced rule-based generation
+            job_title = generate_enhanced_fallback_title(job_description)
+        
+        return jsonify({'job_title': job_title})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate_job_title_suggestions', methods=['POST'])
+def generate_job_title_suggestions():
+    """
+    Generate multiple job title suggestions using LLaMA API
+    """
+    try:
+        data = request.get_json()
+        job_description = data.get('job_description', '')
+        count = data.get('count', 3)
+        
+        if not job_description:
+            return jsonify({'error': 'Job description is required'}), 400
+        
+        # Generate multiple suggestions
+        prompt = f"""Generate {count} different professional job titles based on this job description.
+        Provide variety in seniority levels and focus areas.
+        
+        Job Description: {job_description}
+        
+        Return only the job titles, one per line, numbered 1-{count}."""
+        
+        try:
+            client = OpenAI(base_url="https://api.together.xyz/v1", api_key="your_together_api_key")
+            completion = client.chat.completions.create(
+                model="meta-llama/Llama-2-70b-chat-hf",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.5,
+                max_tokens=200,
+            )
+            suggestions_text = completion.choices[0].message.content.strip()
+            # Parse suggestions from numbered list
+            suggestions = [line.strip() for line in suggestions_text.split('\n') if line.strip() and not line.strip().startswith(('1.', '2.', '3.', '4.', '5.'))]
+        except Exception as e:
+            print(f"LLaMA API error: {e}")
+            # Fallback to rule-based suggestions
+            suggestions = generate_fallback_suggestions(job_description, count)
+        
+        return jsonify({'suggestions': suggestions})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Helper functions for fallback generation
+def generate_fallback_job_title(description):
+    """Fallback job title generation using rule-based approach"""
+    desc_lower = description.lower()
+    
+    if 'flutter' in desc_lower or 'mobile' in desc_lower:
+        if 'senior' in desc_lower or 'lead' in desc_lower:
+            return 'Senior Flutter Developer'
+        elif 'junior' in desc_lower or 'entry' in desc_lower:
+            return 'Junior Flutter Developer'
+        else:
+            return 'Flutter Developer'
+    elif 'react' in desc_lower or 'frontend' in desc_lower:
+        if 'senior' in desc_lower or 'lead' in desc_lower:
+            return 'Senior Frontend Developer'
+        else:
+            return 'Frontend Developer'
+    elif 'python' in desc_lower or 'backend' in desc_lower:
+        if 'senior' in desc_lower or 'lead' in desc_lower:
+            return 'Senior Backend Developer'
+        else:
+            return 'Backend Developer'
+    elif 'full stack' in desc_lower or 'fullstack' in desc_lower:
+        return 'Full Stack Developer'
+    elif 'data' in desc_lower and 'scientist' in desc_lower:
+        return 'Data Scientist'
+    elif 'data' in desc_lower and 'engineer' in desc_lower:
+        return 'Data Engineer'
+    elif 'machine learning' in desc_lower or 'ml' in desc_lower:
+        return 'Machine Learning Engineer'
+    elif 'devops' in desc_lower or 'cloud' in desc_lower:
+        return 'DevOps Engineer'
+    elif 'product' in desc_lower and 'manager' in desc_lower:
+        return 'Product Manager'
+    elif 'designer' in desc_lower or 'ui' in desc_lower or 'ux' in desc_lower:
+        return 'UI/UX Designer'
+    elif 'marketing' in desc_lower:
+        return 'Marketing Specialist'
+    elif 'sales' in desc_lower:
+        return 'Sales Representative'
+    elif 'analyst' in desc_lower:
+        return 'Business Analyst'
+    else:
+        return 'Software Engineer'
+
+def generate_fallback_job_description(job_title):
+    """Fallback job description generation"""
+    title_lower = job_title.lower()
+    
+    if 'flutter' in title_lower:
+        return 'We are looking for a Flutter Developer to join our team. You will be responsible for developing cross-platform mobile applications using Flutter framework. Experience with Dart, Firebase, and state management is required.'
+    elif 'frontend' in title_lower:
+        return 'We are seeking a Frontend Developer to create user-friendly web applications. You will work with modern JavaScript frameworks, HTML, CSS, and collaborate with design teams to implement responsive interfaces.'
+    elif 'backend' in title_lower:
+        return 'We need a Backend Developer to build and maintain server-side applications. You will work with databases, APIs, and cloud services to ensure scalable and efficient backend systems.'
+    elif 'full stack' in title_lower:
+        return 'We are looking for a Full Stack Developer who can work on both frontend and backend development. You will be involved in the complete development lifecycle from concept to deployment.'
+    elif 'data scientist' in title_lower:
+        return 'We are seeking a Data Scientist to analyze complex datasets and build machine learning models. You will work with statistical analysis, data visualization, and predictive modeling.'
+    else:
+        return 'We are looking for a qualified professional to join our team. The ideal candidate should have relevant experience and skills in the field.'
+
+def generate_enhanced_fallback_title(description):
+    """Enhanced fallback title generation"""
+    base_title = generate_fallback_job_title(description)
+    desc_lower = description.lower()
+    
+    # Add seniority if not present
+    if 'senior' not in desc_lower and 'lead' not in desc_lower and 'junior' not in desc_lower:
+        if '5+' in description or 'five' in desc_lower or 'experienced' in desc_lower:
+            base_title = base_title.replace('Developer', 'Senior Developer')
+            base_title = base_title.replace('Engineer', 'Senior Engineer')
+    
+    return base_title
+
+def generate_fallback_suggestions(description, count):
+    """Generate multiple fallback suggestions"""
+    base_title = generate_fallback_job_title(description)
+    suggestions = [base_title]
+    
+    # Generate variations
+    if 'developer' in base_title.lower():
+        suggestions.extend([
+            base_title.replace('Developer', 'Senior Developer'),
+            base_title.replace('Developer', 'Lead Developer'),
+            base_title.replace('Developer', 'Principal Developer')
+        ])
+    elif 'engineer' in base_title.lower():
+        suggestions.extend([
+            base_title.replace('Engineer', 'Senior Engineer'),
+            base_title.replace('Engineer', 'Lead Engineer'),
+            base_title.replace('Engineer', 'Principal Engineer')
+        ])
+    
+    return suggestions[:count]
+
+if __name__ == '__main__':
     # Run the app
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
