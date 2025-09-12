@@ -7,11 +7,9 @@ import '../models/ats_workflow_models.dart';
 
 class AtsService {
   AtsService({String? baseUrl})
-    : baseUrl =
-          baseUrl ??
-          const String.fromEnvironment(
+      : baseUrl = baseUrl ?? const String.fromEnvironment(
             'ATS_BASE_URL',
-            defaultValue: 'https://85b7e4ef8dd9.ngrok-free.app',
+            defaultValue: 'https://9f8d9cdbebdd.ngrok.app',
           );
 
   final String baseUrl;
@@ -141,7 +139,10 @@ class AtsService {
     final response = await http.post(
       _uri('/rag/ingest'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'workspace_id': workspaceId, 'resumes': resumes}),
+      body: jsonEncode({
+        'workspace_id': workspaceId,
+        'resumes': resumes,
+      }),
     );
     return _decodeJson(response);
   }
@@ -154,7 +155,10 @@ class AtsService {
     final response = await http.post(
       _uri('/rag/suggest'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'workspace_id': workspaceId, 'resume_id': resumeId}),
+      body: jsonEncode({
+        'workspace_id': workspaceId,
+        'resume_id': resumeId,
+      }),
     );
     return _decodeJson(response);
   }
@@ -275,6 +279,90 @@ class AtsService {
         return MediaType('application', 'msword');
       default:
         return null;
+    }
+  }
+
+  // Interview Scheduling Methods
+  Future<bool> checkInterviewIntent(String message) async {
+    try {
+      final response = await http.post(
+        _uri('/rag/check-interview-intent'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'message': message}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['has_intent'] ?? false;
+      }
+      return false;
+    } catch (e) {
+      print('Error checking interview intent: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> scheduleInterview({
+    required String workspaceId,
+    required String resumeId,
+    required String message,
+  }) async {
+    try {
+      final response = await http.post(
+        _uri('/rag/schedule-interview'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'workspace_id': workspaceId,
+          'resume_id': resumeId,
+          'message': message,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          'success': false,
+          'error': 'Failed to schedule interview: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Error scheduling interview: $e',
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> getManualEmailData({
+    required String workspaceId,
+    required String resumeId,
+    required Map<String, dynamic> interviewDetails,
+  }) async {
+    try {
+      final response = await http.post(
+        _uri('/rag/get-manual-email'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'workspace_id': workspaceId,
+          'resume_id': resumeId,
+          'interview_details': interviewDetails,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          'success': false,
+          'error': 'Failed to get email data: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Error getting email data: $e',
+      };
     }
   }
 }

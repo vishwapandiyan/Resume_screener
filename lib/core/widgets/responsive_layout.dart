@@ -138,9 +138,6 @@ class ResponsiveContainer extends StatelessWidget {
   final Decoration? foregroundDecoration;
   final Matrix4? transform;
   final Alignment? transformAlignment;
-  final bool useResponsivePadding;
-  final bool useResponsiveWidth;
-  final bool useResponsiveHeight;
 
   const ResponsiveContainer({
     super.key,
@@ -157,14 +154,11 @@ class ResponsiveContainer extends StatelessWidget {
     this.foregroundDecoration,
     this.transform,
     this.transformAlignment,
-    this.useResponsivePadding = false,
-    this.useResponsiveWidth = false,
-    this.useResponsiveHeight = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final responsiveWidth = useResponsiveWidth && width != null
+    final responsiveWidth = width != null
         ? ResponsiveUtils.getResponsiveContainerWidth(
             context,
             mobile: width! * 0.9,
@@ -173,9 +167,9 @@ class ResponsiveContainer extends StatelessWidget {
             largeDesktop: width! * 0.6,
             extraLargeDesktop: width! * 0.5,
           )
-        : width;
+        : null;
 
-    final responsiveHeight = useResponsiveHeight && height != null
+    final responsiveHeight = height != null
         ? ResponsiveUtils.getResponsiveContainerHeight(
             context,
             mobile: height! * 0.9,
@@ -184,11 +178,11 @@ class ResponsiveContainer extends StatelessWidget {
             largeDesktop: height!,
             extraLargeDesktop: height!,
           )
-        : height;
+        : null;
 
-    final responsivePadding = useResponsivePadding
+    final responsivePadding = padding != null
         ? ResponsiveUtils.getResponsivePadding(context)
-        : padding;
+        : null;
 
     return Container(
       width: responsiveWidth,
@@ -204,398 +198,6 @@ class ResponsiveContainer extends StatelessWidget {
       transform: transform,
       transformAlignment: transformAlignment,
       child: child,
-    );
-  }
-}
-
-class ResponsiveGrid extends StatelessWidget {
-  final List<Widget> children;
-  final double? crossAxisSpacing;
-  final double? mainAxisSpacing;
-  final double? childAspectRatio;
-  final int? crossAxisCount;
-  final ScrollPhysics? physics;
-  final bool shrinkWrap;
-
-  const ResponsiveGrid({
-    super.key,
-    required this.children,
-    this.crossAxisSpacing,
-    this.mainAxisSpacing,
-    this.childAspectRatio,
-    this.crossAxisCount,
-    this.physics,
-    this.shrinkWrap = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final responsiveColumns =
-        crossAxisCount ?? ResponsiveUtils.getResponsiveGridColumns(context);
-    final responsiveAspectRatio =
-        childAspectRatio ?? ResponsiveUtils.getResponsiveAspectRatio(context);
-
-    return GridView.count(
-      crossAxisCount: responsiveColumns,
-      crossAxisSpacing:
-          crossAxisSpacing ??
-          ResponsiveUtils.getResponsiveSpacing(
-            context,
-            mobile: 12.0,
-            tablet: 16.0,
-            desktop: 20.0,
-          ),
-      mainAxisSpacing:
-          mainAxisSpacing ??
-          ResponsiveUtils.getResponsiveSpacing(
-            context,
-            mobile: 12.0,
-            tablet: 16.0,
-            desktop: 20.0,
-          ),
-      childAspectRatio: responsiveAspectRatio,
-      physics: physics,
-      shrinkWrap: shrinkWrap,
-      children: children,
-    );
-  }
-}
-
-class ResponsiveRow extends StatelessWidget {
-  final List<Widget> children;
-  final MainAxisAlignment mainAxisAlignment;
-  final CrossAxisAlignment crossAxisAlignment;
-  final MainAxisSize mainAxisSize;
-  final double? spacing;
-
-  const ResponsiveRow({
-    super.key,
-    required this.children,
-    this.mainAxisAlignment = MainAxisAlignment.start,
-    this.crossAxisAlignment = CrossAxisAlignment.center,
-    this.mainAxisSize = MainAxisSize.max,
-    this.spacing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final responsiveSpacing =
-        spacing ??
-        ResponsiveUtils.getResponsiveSpacing(
-          context,
-          mobile: 12.0,
-          tablet: 16.0,
-          desktop: 20.0,
-        );
-
-    if (children.length <= 1) {
-      return Row(
-        mainAxisAlignment: mainAxisAlignment,
-        crossAxisAlignment: crossAxisAlignment,
-        mainAxisSize: mainAxisSize,
-        children: children,
-      );
-    }
-
-    final spacedChildren = <Widget>[];
-    for (int i = 0; i < children.length; i++) {
-      spacedChildren.add(children[i]);
-      if (i < children.length - 1) {
-        spacedChildren.add(SizedBox(width: responsiveSpacing));
-      }
-    }
-
-    return Row(
-      mainAxisAlignment: mainAxisAlignment,
-      crossAxisAlignment: crossAxisAlignment,
-      mainAxisSize: mainAxisSize,
-      children: spacedChildren,
-    );
-  }
-}
-
-class ResponsiveColumn extends StatelessWidget {
-  final List<Widget> children;
-  final MainAxisAlignment mainAxisAlignment;
-  final CrossAxisAlignment crossAxisAlignment;
-  final MainAxisSize mainAxisSize;
-  final double? spacing;
-
-  const ResponsiveColumn({
-    super.key,
-    required this.children,
-    this.mainAxisAlignment = MainAxisAlignment.start,
-    this.crossAxisAlignment = CrossAxisAlignment.center,
-    this.mainAxisSize = MainAxisSize.max,
-    this.spacing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final responsiveSpacing =
-        spacing ??
-        ResponsiveUtils.getResponsiveSpacing(
-          context,
-          mobile: 12.0,
-          tablet: 16.0,
-          desktop: 20.0,
-        );
-
-    if (children.length <= 1) {
-      return Column(
-        mainAxisAlignment: mainAxisAlignment,
-        crossAxisAlignment: crossAxisAlignment,
-        mainAxisSize: mainAxisSize,
-        children: children,
-      );
-    }
-
-    final spacedChildren = <Widget>[];
-    for (int i = 0; i < children.length; i++) {
-      spacedChildren.add(children[i]);
-      if (i < children.length - 1) {
-        spacedChildren.add(SizedBox(height: responsiveSpacing));
-      }
-    }
-
-    return Column(
-      mainAxisAlignment: mainAxisAlignment,
-      crossAxisAlignment: crossAxisAlignment,
-      mainAxisSize: mainAxisSize,
-      children: spacedChildren,
-    );
-  }
-}
-
-class ResponsiveWebLayout extends StatelessWidget {
-  final Widget? sidebar;
-  final Widget content;
-  final bool showSidebar;
-  final double? sidebarWidth;
-  final Color? backgroundColor;
-
-  const ResponsiveWebLayout({
-    super.key,
-    this.sidebar,
-    required this.content,
-    this.showSidebar = true,
-    this.sidebarWidth,
-    this.backgroundColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!ResponsiveUtils.isWeb() || !showSidebar) {
-      return content;
-    }
-
-    final screenSize = ResponsiveUtils.getScreenSize(context);
-
-    // On mobile web, show sidebar as overlay
-    if (screenSize == ScreenSize.mobile) {
-      return Stack(
-        children: [
-          content,
-          if (sidebar != null)
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(
-                width:
-                    sidebarWidth ??
-                    ResponsiveUtils.getResponsiveSidebarWidth(context),
-                color: backgroundColor ?? Colors.white,
-                child: sidebar!,
-              ),
-            ),
-        ],
-      );
-    }
-
-    // On larger screens, show sidebar alongside content
-    return Row(
-      children: [
-        if (sidebar != null)
-          Container(
-            width:
-                sidebarWidth ??
-                ResponsiveUtils.getResponsiveSidebarWidth(context),
-            color: backgroundColor ?? Colors.white,
-            child: sidebar!,
-          ),
-        Expanded(child: content),
-      ],
-    );
-  }
-}
-
-/// A responsive widget that automatically switches between horizontal and vertical layouts
-/// based on available space using MediaQuery
-class ResponsiveFlexibleRow extends StatelessWidget {
-  final List<Widget> children;
-  final MainAxisAlignment mainAxisAlignment;
-  final CrossAxisAlignment crossAxisAlignment;
-  final MainAxisSize mainAxisSize;
-  final double? spacing;
-  final double? minWidth;
-  final ScrollPhysics? physics;
-  final bool shrinkWrap;
-
-  const ResponsiveFlexibleRow({
-    super.key,
-    required this.children,
-    this.mainAxisAlignment = MainAxisAlignment.start,
-    this.crossAxisAlignment = CrossAxisAlignment.center,
-    this.mainAxisSize = MainAxisSize.max,
-    this.spacing,
-    this.minWidth,
-    this.physics,
-    this.shrinkWrap = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Check if we should use vertical scrolling
-    if (ResponsiveUtils.shouldUseVerticalScrolling(
-      context,
-      minWidth: minWidth,
-    )) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        physics: physics,
-        child: ResponsiveColumn(
-          spacing:
-              spacing ?? ResponsiveUtils.getResponsiveVerticalSpacing(context),
-          children: children,
-        ),
-      );
-    }
-
-    // Use horizontal layout with horizontal scrolling if needed
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: physics,
-      child: ResponsiveRow(
-        spacing:
-            spacing ?? ResponsiveUtils.getResponsiveHorizontalSpacing(context),
-        children: children,
-      ),
-    );
-  }
-}
-
-/// A responsive grid that automatically switches to vertical scrolling when horizontal space is limited
-class ResponsiveFlexibleGrid extends StatelessWidget {
-  final List<Widget> children;
-  final double? crossAxisSpacing;
-  final double? mainAxisSpacing;
-  final double? childAspectRatio;
-  final int? crossAxisCount;
-  final ScrollPhysics? physics;
-  final bool shrinkWrap;
-  final double? minWidth;
-  final double? itemWidth;
-
-  const ResponsiveFlexibleGrid({
-    super.key,
-    required this.children,
-    this.crossAxisSpacing,
-    this.mainAxisSpacing,
-    this.childAspectRatio,
-    this.crossAxisCount,
-    this.physics,
-    this.shrinkWrap = false,
-    this.minWidth,
-    this.itemWidth,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Check if items should be stacked vertically
-    if (ResponsiveUtils.shouldStackVertically(
-      context,
-      itemWidth: itemWidth,
-      itemCount:
-          crossAxisCount ?? ResponsiveUtils.getResponsiveGridColumns(context),
-      minSpacing: crossAxisSpacing,
-    )) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        physics: physics,
-        child: ResponsiveColumn(
-          spacing:
-              mainAxisSpacing ??
-              ResponsiveUtils.getResponsiveVerticalSpacing(context),
-          children: children,
-        ),
-      );
-    }
-
-    // Use normal grid layout
-    return ResponsiveGrid(
-      crossAxisSpacing: crossAxisSpacing,
-      mainAxisSpacing: mainAxisSpacing,
-      childAspectRatio: childAspectRatio,
-      crossAxisCount: crossAxisCount,
-      physics: physics,
-      shrinkWrap: shrinkWrap,
-      children: children,
-    );
-  }
-}
-
-/// A responsive widget that provides horizontal scrolling with vertical fallback
-/// based on MediaQuery screen width
-class ResponsiveScrollableRow extends StatelessWidget {
-  final List<Widget> children;
-  final MainAxisAlignment mainAxisAlignment;
-  final CrossAxisAlignment crossAxisAlignment;
-  final double? spacing;
-  final double? minWidth;
-  final ScrollPhysics? physics;
-  final EdgeInsetsGeometry? padding;
-
-  const ResponsiveScrollableRow({
-    super.key,
-    required this.children,
-    this.mainAxisAlignment = MainAxisAlignment.start,
-    this.crossAxisAlignment = CrossAxisAlignment.center,
-    this.spacing,
-    this.minWidth,
-    this.physics,
-    this.padding,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Check if we should use vertical scrolling
-    if (ResponsiveUtils.shouldUseVerticalScrolling(
-      context,
-      minWidth: minWidth,
-    )) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        physics: physics,
-        padding: padding,
-        child: ResponsiveColumn(
-          spacing:
-              spacing ?? ResponsiveUtils.getResponsiveVerticalSpacing(context),
-          children: children,
-        ),
-      );
-    }
-
-    // Use horizontal scrolling
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: physics,
-      padding: padding,
-      child: ResponsiveRow(
-        spacing:
-            spacing ?? ResponsiveUtils.getResponsiveHorizontalSpacing(context),
-        children: children,
-      ),
     );
   }
 }

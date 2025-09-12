@@ -5,6 +5,7 @@ import 'package:glow_container/glow_container.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive_utils.dart';
 import '../../core/widgets/responsive_layout.dart';
+import '../../services/llama_service.dart';
 import 'ats_results_view.dart';
 import 'processing_view.dart';
 
@@ -23,6 +24,14 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
   List<PlatformFile> _selectedFiles = [];
   bool _isGeneratingTitle = false;
   bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _jobDescriptionController.addListener(() {
+      setState(() {});
+    });
+  }
 
   @override
   void dispose() {
@@ -273,23 +282,50 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
               ),
             ),
             const Spacer(),
-            if (_jobDescriptionController.text.isNotEmpty &&
-                _jobTitleController.text.isEmpty)
-              TextButton.icon(
-                onPressed: _isGeneratingTitle ? null : _generateJobTitle,
-                icon: _isGeneratingTitle
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.auto_awesome, size: 16),
-                label: Text(
-                  _isGeneratingTitle ? 'Generating...' : 'Generate Title',
-                  style: const TextStyle(
-                    color: AppTheme.accentBlue,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w500,
+            if (_jobDescriptionController.text.isNotEmpty)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4285F4), Color(0xFF8B5CF6)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF4285F4).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: _isGeneratingTitle ? null : _generateJobTitle,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: _isGeneratingTitle
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.auto_awesome, size: 16),
+                  label: Text(
+                    _isGeneratingTitle ? 'Generating...' : 'Generate Title',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
@@ -872,16 +908,13 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
     });
 
     try {
-      // Simulate API delay
-      await Future.delayed(const Duration(milliseconds: 800));
-
-      // Generate title using local logic
-      final generatedTitle = _generateMockTitle(_jobDescriptionController.text);
+      // Generate title using LLaMA API via Flask backend
+      final generatedTitle = await LlamaService.generateJobTitle(_jobDescriptionController.text);
       _jobTitleController.text = generatedTitle;
 
       _showSuccessSnackBar('Job title generated successfully!');
     } catch (e) {
-      _showErrorSnackBar('Error generating job title');
+      _showErrorSnackBar('Error generating job title: $e');
     } finally {
       setState(() {
         _isGeneratingTitle = false;
