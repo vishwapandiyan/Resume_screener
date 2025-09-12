@@ -937,6 +937,8 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
         allowMultiple: true,
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx', 'txt'],
+        // Ensure bytes are available on Web so uploads work via multipart
+        withData: true,
       );
 
       if (result != null) {

@@ -6,7 +6,11 @@ import 'package:http_parser/http_parser.dart' show MediaType;
 import '../models/ats_workflow_models.dart';
 
 class AtsService {
-  AtsService({this.baseUrl = 'https://03636218493c.ngrok.app'});
+  AtsService({String? baseUrl})
+      : baseUrl = baseUrl ?? const String.fromEnvironment(
+            'ATS_BASE_URL',
+            defaultValue: 'https://5e69e60ad367.ngrok.app',
+          );
 
   final String baseUrl;
 
@@ -100,6 +104,82 @@ class AtsService {
         'resumes': resumeMaps,
         'skill_filters': skillFilters,
         'experience_filter': experienceFilter,
+      }),
+    );
+    return _decodeJson(response);
+  }
+
+  // RAG: store job description
+  Future<Map<String, dynamic>> ragStoreJd({
+    required String workspaceId,
+    required String jobDescription,
+  }) async {
+    final response = await http.post(
+      _uri('/rag/store-jd'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'workspace_id': workspaceId,
+        'job_description': jobDescription,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw AtsException(
+        statusCode: response.statusCode,
+        message: response.body,
+      );
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  // RAG: ingest
+  Future<Map<String, dynamic>> ragIngest({
+    required String workspaceId,
+    required List<Map<String, dynamic>> resumes, // id, text, meta
+  }) async {
+    final response = await http.post(
+      _uri('/rag/ingest'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'workspace_id': workspaceId,
+        'resumes': resumes,
+      }),
+    );
+    return _decodeJson(response);
+  }
+
+  // RAG: suggest questions
+  Future<Map<String, dynamic>> ragSuggest({
+    required String workspaceId,
+    required String resumeId,
+  }) async {
+    final response = await http.post(
+      _uri('/rag/suggest'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'workspace_id': workspaceId,
+        'resume_id': resumeId,
+      }),
+    );
+    return _decodeJson(response);
+  }
+
+  // RAG: query
+  Future<Map<String, dynamic>> ragQuery({
+    required String workspaceId,
+    required String message,
+    String? resumeId,
+    String? chatId,
+    int k = 5,
+  }) async {
+    final response = await http.post(
+      _uri('/rag/query'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'workspace_id': workspaceId,
+        'message': message,
+        if (resumeId != null) 'resume_id': resumeId,
+        if (chatId != null) 'chat_id': chatId,
+        'k': k,
       }),
     );
     return _decodeJson(response);

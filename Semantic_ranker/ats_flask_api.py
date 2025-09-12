@@ -34,7 +34,19 @@ import joblib
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for Flutter frontend
+# Enable permissive CORS for Flutter web (multipart + json)
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    supports_credentials=False,
+)
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers.setdefault('Access-Control-Allow-Origin', '*')
+    response.headers.setdefault('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.headers.setdefault('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    return response
 
 # Configuration
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
@@ -91,13 +103,20 @@ def initialize_models():
     
     # Initialize LLaMA client
     try:
-        llama_client = OpenAI(
-            base_url="https://integrate.api.nvidia.com/v1",
-            api_key="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"
-        )
-        print("✅ LLaMA client initialized")
+        # Try to get API key from environment variable
+        api_key = os.environ.get('NVIDIA_API_KEY') or os.environ.get('LLAMA_API_KEY')
+        if api_key:
+            llama_client = OpenAI(
+                base_url="https://integrate.api.nvidia.com/v1",
+                api_key=api_key
+            )
+            print("✅ LLaMA client initialized")
+        else:
+            print("⚠️ No LLaMA API key found. Set NVIDIA_API_KEY or LLAMA_API_KEY environment variable.")
+            llama_client = None
     except Exception as e:
         print(f"❌ Failed to initialize LLaMA client: {e}")
+        llama_client = None
     
     # Initialize Chroma DB
     try:
@@ -106,6 +125,14 @@ def initialize_models():
     except Exception as e:
         print(f"❌ Failed to initialize Chroma DB: {e}")
     
+    try:
+        # Register RAG blueprint (separate module)
+        from rag_api import init_rag_blueprint
+        init_rag_blueprint(app, llama_client, chroma_client, sentence_model)
+        print("✅ RAG blueprint registered")
+    except Exception as e:
+        print(f"⚠️ RAG blueprint not registered: {e}")
+
     print("🎯 Model initialization complete!")
     return True
 
@@ -345,7 +372,7 @@ def health_check():
         }
     })
 
-@app.route('/process-resumes', methods=['POST'])
+@app.route('/process-resumes', methods=['POST', 'OPTIONS'])
 def process_resumes():
     """
     Process uploaded resumes with ATS scoring and field extraction
@@ -380,6 +407,9 @@ def process_resumes():
     }
     """
     try:
+        # Handle preflight
+        if request.method == 'OPTIONS':
+            return ('', 204)
         # Check if files are present
         if 'files' not in request.files:
             return jsonify({'error': 'No files provided'}), 400
@@ -1048,4 +1078,5 @@ if __name__ == '__main__':
     print("  - GET  /health")
     
     # Run the app
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)

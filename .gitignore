@@ -43,3 +43,28 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Python related
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+
+# Database and model files
+*.db
+*.sqlite3
+chroma_db/
+*.pkl
+*.joblib
+
+# API keys and secrets
+.env
+*.key
