@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "130690398592",
+    "project_id": "clauselens-81eb8",
+    "storage_bucket": "clauselens-81eb8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:130690398592:android:deb329562a5fbd2106e965",
+        "android_client_info": {
+          "package_name": "com.example.clauselens"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "130690398592-a2t3isq7dpbfg7aeshr7klhng5tecbng.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOFuZ31FlaTEaLQTsSmgfopkc0nzknAIM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "130690398592-a2t3isq7dpbfg7aeshr7klhng5tecbng.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
