@@ -9,7 +9,7 @@ class AtsService {
   AtsService({String? baseUrl})
       : baseUrl = baseUrl ?? const String.fromEnvironment(
             'ATS_BASE_URL',
-            defaultValue: 'https://5e69e60ad367.ngrok.app',
+            defaultValue: 'https://0b578c441d34.ngrok.app',
           );
 
   final String baseUrl;

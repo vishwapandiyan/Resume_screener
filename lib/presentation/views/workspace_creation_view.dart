@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive_utils.dart';
 import '../../core/widgets/responsive_layout.dart';
 import 'ats_results_view.dart';
+import 'processing_view.dart';
 
 class WorkspaceCreationView extends StatefulWidget {
   const WorkspaceCreationView({super.key});
@@ -728,18 +729,18 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
 
   Widget _buildActionButtons(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        // ATS Analysis Button
+        // ATS Analysis Button (replaces Next button position)
         GestureDetector(
           onTap: _canProcess() ? _navigateToAtsAnalysis : null,
           child: _canProcess()
               ? GlowContainer(
                   gradientColors: [
-                    const Color(0xFF8B5CF6), // Purple
-                    const Color(0xFF3B82F6), // Blue
-                    const Color(0xFF10B981), // Green
-                    const Color(0xFFF59E0B), // Orange
+                    const Color(0xFF8B5CF6),
+                    const Color(0xFF3B82F6),
+                    const Color(0xFF10B981),
+                    const Color(0xFFF59E0B),
                   ],
                   rotationDuration: Duration(seconds: 3),
                   glowRadius: ResponsiveUtils.getResponsiveSpacing(
@@ -818,94 +819,6 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
                   ),
                 ),
         ),
-        // Next Button
-        GestureDetector(
-          onTap: _canProcess() ? _processWorkspace : null,
-          child: _canProcess()
-              ? GlowContainer(
-                  gradientColors: [
-                    const Color(0xFF4285F4), // Blue
-                    const Color(0xFFEA4335), // Red
-                    const Color(0xFFFBBC04), // Yellow
-                    const Color(0xFF34A853), // Green
-                  ],
-                  rotationDuration: Duration(seconds: 3),
-                  glowRadius: ResponsiveUtils.getResponsiveSpacing(
-                    context,
-                    mobile: 3,
-                    tablet: 4,
-                    desktop: 5,
-                    largeDesktop: 6,
-                    extraLargeDesktop: 7,
-                  ),
-                  containerOptions: ContainerOptions(
-                    width: 120,
-                    height: 50,
-                    borderRadius: 25,
-                    backgroundColor: Colors.transparent,
-                    borderSide: BorderSide(
-                      width: 2,
-                      color: AppTheme.accentBlue,
-                    ),
-                  ),
-                  child: Container(
-                    width: 120,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentBlue,
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Next',
-                          style: TextStyle(
-                            color: AppTheme.backgroundWhite,
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.arrow_forward,
-                          color: AppTheme.backgroundWhite,
-                          size: 18,
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : Container(
-                  width: 120,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: AppTheme.secondaryGray,
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Next',
-                        style: TextStyle(
-                          color: AppTheme.backgroundWhite,
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.arrow_forward,
-                        color: AppTheme.backgroundWhite,
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                ),
-        ),
       ],
     );
   }
@@ -921,7 +834,7 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AtsResultsView(
+        builder: (context) => ProcessingView(
           files: _selectedFiles,
           jobTitle: _jobTitleController.text,
           jobDescription: _jobDescriptionController.text,
