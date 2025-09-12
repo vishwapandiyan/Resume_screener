@@ -4,7 +4,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive_utils.dart';
 import '../../core/widgets/responsive_layout.dart';
 import '../widgets/gradient_text.dart';
-import '../widgets/gradient_button.dart';
 import 'auth/login_view.dart';
 import 'workspace_dashboard_view.dart';
 
@@ -223,16 +222,7 @@ class _LandingViewState extends State<LandingView>
       children: [
         _buildNavigationButton('About us'),
         _buildNavigationButton('Contact Us'),
-        GradientButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginView()),
-            );
-          },
-          text: 'Log in',
-          isSmall: true,
-        ),
+        _buildLoginButton(),
       ],
     );
   }
@@ -262,16 +252,7 @@ class _LandingViewState extends State<LandingView>
             extraLargeDesktop: 32,
           ),
         ),
-        GradientButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginView()),
-            );
-          },
-          text: 'Log in',
-          isSmall: true,
-        ),
+        _buildLoginButton(),
       ],
     );
   }
@@ -336,7 +317,7 @@ class _LandingViewState extends State<LandingView>
               ),
             ),
 
-            // CTA Button with animated border and pop-up effect
+            // CTA Button
             _buildAnimatedCTAButton(),
           ],
         ),
@@ -612,6 +593,38 @@ class _LandingViewState extends State<LandingView>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLoginButton() {
+    return ElevatedButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginView()),
+        );
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.accentBlue,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      ),
+      child: Text(
+        'Log in',
+        style: TextStyle(
+          fontSize: ResponsiveUtils.getResponsiveFontSize(
+            context,
+            mobile: 14,
+            tablet: 15,
+            desktop: 16,
+            largeDesktop: 17,
+            extraLargeDesktop: 18,
+          ),
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'presentation/views/landing/landing_view.dart';
+import 'presentation/views/landing_view.dart';
 import 'presentation/views/workspace_dashboard_view.dart';
 import 'presentation/views/auth/login_view.dart';
 import 'presentation/views/auth/signup_view.dart';
