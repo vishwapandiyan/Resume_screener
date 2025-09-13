@@ -2,19 +2,16 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class LlamaService {
-  static const String _baseUrl = 'https://9f8d9cdbebdd.ngrok.app'; // Same as ATS service
-  
+  static const String _baseUrl =
+      'https://0da70a85088d.ngrok-free.app'; // Same as ATS service
+
   /// Generate job title using LLaMA API via Flask backend
   static Future<String> generateJobTitle(String jobDescription) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/generate_job_title'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'job_description': jobDescription,
-        }),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'job_description': jobDescription}),
       );
 
       if (response.statusCode == 200) {
@@ -34,19 +31,17 @@ class LlamaService {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/generate_job_description'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'job_title': jobTitle,
-        }),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'job_title': jobTitle}),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['job_description'] ?? 'Generated job description';
       } else {
-        throw Exception('Failed to generate job description: ${response.statusCode}');
+        throw Exception(
+          'Failed to generate job description: ${response.statusCode}',
+        );
       }
     } catch (e) {
       // Fallback to mock generation if API fails
@@ -59,9 +54,7 @@ class LlamaService {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/generate_enhanced_job_title'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'job_description': jobDescription,
           'include_seniority': true,
@@ -74,7 +67,9 @@ class LlamaService {
         final data = jsonDecode(response.body);
         return data['job_title'] ?? 'Generated Job Title';
       } else {
-        throw Exception('Failed to generate enhanced job title: ${response.statusCode}');
+        throw Exception(
+          'Failed to generate enhanced job title: ${response.statusCode}',
+        );
       }
     } catch (e) {
       // Fallback to mock generation if API fails
@@ -83,24 +78,23 @@ class LlamaService {
   }
 
   /// Generate multiple job title suggestions
-  static Future<List<String>> generateJobTitleSuggestions(String jobDescription) async {
+  static Future<List<String>> generateJobTitleSuggestions(
+    String jobDescription,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/generate_job_title_suggestions'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'job_description': jobDescription,
-          'count': 3,
-        }),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'job_description': jobDescription, 'count': 3}),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<String>.from(data['suggestions'] ?? []);
       } else {
-        throw Exception('Failed to generate job title suggestions: ${response.statusCode}');
+        throw Exception(
+          'Failed to generate job title suggestions: ${response.statusCode}',
+        );
       }
     } catch (e) {
       // Fallback to mock generation if API fails
@@ -111,7 +105,7 @@ class LlamaService {
   /// Fallback mock title generation
   static String _generateMockTitle(String description) {
     final keywords = description.toLowerCase();
-    
+
     // Enhanced keyword matching for better titles
     if (keywords.contains('flutter') || keywords.contains('mobile')) {
       if (keywords.contains('senior') || keywords.contains('lead')) {
@@ -133,19 +127,23 @@ class LlamaService {
       } else {
         return 'Backend Developer';
       }
-    } else if (keywords.contains('full stack') || keywords.contains('fullstack')) {
+    } else if (keywords.contains('full stack') ||
+        keywords.contains('fullstack')) {
       return 'Full Stack Developer';
     } else if (keywords.contains('data') && keywords.contains('scientist')) {
       return 'Data Scientist';
     } else if (keywords.contains('data') && keywords.contains('engineer')) {
       return 'Data Engineer';
-    } else if (keywords.contains('machine learning') || keywords.contains('ml')) {
+    } else if (keywords.contains('machine learning') ||
+        keywords.contains('ml')) {
       return 'Machine Learning Engineer';
     } else if (keywords.contains('devops') || keywords.contains('cloud')) {
       return 'DevOps Engineer';
     } else if (keywords.contains('product') && keywords.contains('manager')) {
       return 'Product Manager';
-    } else if (keywords.contains('designer') || keywords.contains('ui') || keywords.contains('ux')) {
+    } else if (keywords.contains('designer') ||
+        keywords.contains('ui') ||
+        keywords.contains('ux')) {
       return 'UI/UX Designer';
     } else if (keywords.contains('marketing')) {
       return 'Marketing Specialist';
@@ -161,7 +159,7 @@ class LlamaService {
   /// Fallback mock description generation
   static String _generateMockDescription(String jobTitle) {
     final title = jobTitle.toLowerCase();
-    
+
     if (title.contains('flutter')) {
       return 'We are looking for a Flutter Developer to join our team. You will be responsible for developing cross-platform mobile applications using Flutter framework. Experience with Dart, Firebase, and state management is required.';
     } else if (title.contains('frontend')) {

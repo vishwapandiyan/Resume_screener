@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' show MediaType;
@@ -7,9 +8,11 @@ import '../models/ats_workflow_models.dart';
 
 class AtsService {
   AtsService({String? baseUrl})
-      : baseUrl = baseUrl ?? const String.fromEnvironment(
+    : baseUrl =
+          baseUrl ??
+          const String.fromEnvironment(
             'ATS_BASE_URL',
-            defaultValue: 'https://9f8d9cdbebdd.ngrok.app',
+            defaultValue: 'https://0da70a85088d.ngrok-free.app',
           );
 
   final String baseUrl;
@@ -139,10 +142,7 @@ class AtsService {
     final response = await http.post(
       _uri('/rag/ingest'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'workspace_id': workspaceId,
-        'resumes': resumes,
-      }),
+      body: jsonEncode({'workspace_id': workspaceId, 'resumes': resumes}),
     );
     return _decodeJson(response);
   }
@@ -155,10 +155,7 @@ class AtsService {
     final response = await http.post(
       _uri('/rag/suggest'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'workspace_id': workspaceId,
-        'resume_id': resumeId,
-      }),
+      body: jsonEncode({'workspace_id': workspaceId, 'resume_id': resumeId}),
     );
     return _decodeJson(response);
   }
@@ -297,7 +294,7 @@ class AtsService {
       }
       return false;
     } catch (e) {
-      print('Error checking interview intent: $e');
+      debugPrint('Error checking interview intent: $e');
       return false;
     }
   }
@@ -327,10 +324,7 @@ class AtsService {
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Error scheduling interview: $e',
-      };
+      return {'success': false, 'error': 'Error scheduling interview: $e'};
     }
   }
 
@@ -359,10 +353,7 @@ class AtsService {
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Error getting email data: $e',
-      };
+      return {'success': false, 'error': 'Error getting email data: $e'};
     }
   }
 }

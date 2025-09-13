@@ -36,17 +36,35 @@ class ResponsiveDemoView extends StatelessWidget {
               constraints: BoxConstraints(
                 maxWidth: ResponsiveUtils.getResponsiveContentMaxWidth(context),
               ),
-              child: ResponsiveColumn(
-                spacing: ResponsiveUtils.getResponsiveSpacing(
-                  context,
-                  mobile: 24.0,
-                  tablet: 28.0,
-                  desktop: 32.0,
-                ),
+              child: Column(
                 children: [
                   _buildScreenInfoCard(context),
+                  SizedBox(
+                    height: ResponsiveUtils.getResponsiveSpacing(
+                      context,
+                      mobile: 24.0,
+                      tablet: 28.0,
+                      desktop: 32.0,
+                    ),
+                  ),
                   _buildResponsiveGridDemo(context),
+                  SizedBox(
+                    height: ResponsiveUtils.getResponsiveSpacing(
+                      context,
+                      mobile: 24.0,
+                      tablet: 28.0,
+                      desktop: 32.0,
+                    ),
+                  ),
                   _buildResponsiveStatsDemo(context),
+                  SizedBox(
+                    height: ResponsiveUtils.getResponsiveSpacing(
+                      context,
+                      mobile: 24.0,
+                      tablet: 28.0,
+                      desktop: 32.0,
+                    ),
+                  ),
                   _buildLayoutComparison(context),
                 ],
               ),
@@ -87,8 +105,7 @@ class ResponsiveDemoView extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: ResponsiveColumn(
-        spacing: 16.0,
+      child: Column(
         children: [
           Row(
             children: [
@@ -154,6 +171,7 @@ class ResponsiveDemoView extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 16),
           ResponsiveGrid(
             crossAxisCount: ResponsiveUtils.getResponsiveGridColumns(context),
             children: [
@@ -226,8 +244,7 @@ class ResponsiveDemoView extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: ResponsiveColumn(
-        spacing: 20.0,
+      child: Column(
         children: [
           Row(
             children: [
@@ -272,6 +289,7 @@ class ResponsiveDemoView extends StatelessWidget {
             ],
           ),
           ResponsiveGrid(
+            crossAxisCount: ResponsiveUtils.getResponsiveGridColumns(context),
             children: List.generate(6, (index) {
               return Container(
                 padding: const EdgeInsets.all(20),
@@ -374,8 +392,7 @@ class ResponsiveDemoView extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: ResponsiveColumn(
-        spacing: 20.0,
+      child: Column(
         children: [
           Row(
             children: [
@@ -424,13 +441,11 @@ class ResponsiveDemoView extends StatelessWidget {
               final isMobile = ResponsiveUtils.isMobile(context);
 
               if (isMobile) {
-                return ResponsiveColumn(
-                  spacing: 16.0,
+                return Column(
                   children: stats.map((stat) => _buildStatCard(stat)).toList(),
                 );
               } else {
-                return ResponsiveRow(
-                  spacing: 16.0,
+                return Row(
                   children: stats
                       .map((stat) => Expanded(child: _buildStatCard(stat)))
                       .toList(),
@@ -524,8 +539,7 @@ class ResponsiveDemoView extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: ResponsiveColumn(
-        spacing: 20.0,
+      child: Column(
         children: [
           Row(
             children: [

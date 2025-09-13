@@ -531,7 +531,7 @@ class DashboardView extends StatelessWidget {
         ),
         onTap: () {
           // Handle navigation
-          print('Navigating to: $title');
+          debugPrint('Navigating to: $title');
         },
       ),
     );

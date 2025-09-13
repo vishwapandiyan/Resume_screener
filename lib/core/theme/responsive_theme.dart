@@ -327,16 +327,16 @@ class ResponsiveTheme {
   // Get platform-specific theme adjustments
   static Map<String, dynamic> getPlatformAdjustments(BuildContext context) {
     final isWebPlatform = isWeb();
-    final screenSize = ResponsiveUtils.getScreenSize(context);
+    // final screenSize = ResponsiveUtils.getScreenSize(context);
 
     if (isWebPlatform) {
       return {
         'cursorWidth': 2.0,
         'scrollbarTheme': ScrollbarThemeData(
-          thumbColor: MaterialStateProperty.all(
+          thumbColor: WidgetStateProperty.all(
             Colors.grey.withValues(alpha: 0.5),
           ),
-          trackColor: MaterialStateProperty.all(
+          trackColor: WidgetStateProperty.all(
             Colors.grey.withValues(alpha: 0.1),
           ),
         ),

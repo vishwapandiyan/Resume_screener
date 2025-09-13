@@ -12,4 +12,4 @@ PORT = 5000
 DEBUG = True
 
 # Ngrok URL for external access
-NGROK_URL = "https://85b7e4ef8dd9.ngrok-free.app"
+NGROK_URL = "https://0da70a85088d.ngrok-free.app"

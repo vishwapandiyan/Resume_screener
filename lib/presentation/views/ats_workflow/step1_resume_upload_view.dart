@@ -43,7 +43,7 @@ class _Step1ResumeUploadViewState extends State<Step1ResumeUploadView> {
 
   Future<void> _pickFiles() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'docx', 'doc'],
         allowMultiple: true,
@@ -78,7 +78,7 @@ class _Step1ResumeUploadViewState extends State<Step1ResumeUploadView> {
 
     try {
       // Call the actual ATS service
-      final result = await _atsService.processResumes(
+      await _atsService.processResumes(
         files: _selectedFiles,
         threshold: _atsThreshold,
       );
@@ -130,16 +130,6 @@ class _Step1ResumeUploadViewState extends State<Step1ResumeUploadView> {
         _isProcessing = false;
       });
     }
-  }
-
-  String _extractNameFromFilename(String filename) {
-    // Simple name extraction from filename
-    final nameWithoutExtension = filename.split('.').first;
-    final parts = nameWithoutExtension.split('_');
-    if (parts.length >= 2) {
-      return '${parts[0]} ${parts[1]}';
-    }
-    return nameWithoutExtension.replaceAll('_', ' ').replaceAll('-', ' ');
   }
 
   @override

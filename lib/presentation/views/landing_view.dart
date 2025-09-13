@@ -6,6 +6,28 @@ import '../../core/widgets/responsive_layout.dart';
 import '../widgets/gradient_text.dart';
 import 'auth/login_view.dart';
 import 'workspace_dashboard_view.dart';
+import 'dart:math' as math;
+
+// Particle class for background animation
+class Particle {
+  double x;
+  double y;
+  double vx;
+  double vy;
+  double size;
+  Color color;
+  double opacity;
+
+  Particle({
+    required this.x,
+    required this.y,
+    required this.vx,
+    required this.vy,
+    required this.size,
+    required this.color,
+    required this.opacity,
+  });
+}
 
 class LandingView extends StatefulWidget {
   const LandingView({super.key});
@@ -19,10 +41,20 @@ class _LandingViewState extends State<LandingView>
   late AnimationController _gradientAnimationController;
   late AnimationController _buttonBorderAnimationController;
   late AnimationController _buttonScaleAnimationController;
+  late AnimationController _particleAnimationController;
+
+  // Particle data
+  List<Particle> _particles = [];
+
+  // Scroll controller and state
+  late ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize scroll controller
+    _scrollController = ScrollController();
 
     // Gradient text animation controller
     _gradientAnimationController = AnimationController(
@@ -44,8 +76,40 @@ class _LandingViewState extends State<LandingView>
       vsync: this,
     );
 
+    // Particle animation controller
+    _particleAnimationController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    );
+
+    // Initialize particles
+    _initializeParticles();
+
     // Start animations
     _startAnimations();
+  }
+
+  void _initializeParticles() {
+    final random = math.Random();
+    final particleColors = [
+      const Color(0xFF4285F4).withOpacity(0.3),
+      const Color(0xFFEA4335).withOpacity(0.3),
+      const Color(0xFFFBBC04).withOpacity(0.3),
+      const Color(0xFF34A853).withOpacity(0.3),
+      const Color(0xFF8B5CF6).withOpacity(0.3),
+    ];
+
+    _particles = List.generate(50, (index) {
+      return Particle(
+        x: random.nextDouble() * 1000,
+        y: random.nextDouble() * 1000,
+        vx: (random.nextDouble() - 0.5) * 2,
+        vy: (random.nextDouble() - 0.5) * 2,
+        size: random.nextDouble() * 4 + 1,
+        color: particleColors[random.nextInt(particleColors.length)],
+        opacity: random.nextDouble() * 0.8 + 0.2,
+      );
+    });
   }
 
   void _startAnimations() {
@@ -54,6 +118,9 @@ class _LandingViewState extends State<LandingView>
 
     // Button border gradient animation
     _buttonBorderAnimationController.repeat();
+
+    // Particle animation
+    _particleAnimationController.repeat();
   }
 
   @override
@@ -61,6 +128,8 @@ class _LandingViewState extends State<LandingView>
     _gradientAnimationController.dispose();
     _buttonBorderAnimationController.dispose();
     _buttonScaleAnimationController.dispose();
+    _particleAnimationController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -75,16 +144,34 @@ class _LandingViewState extends State<LandingView>
             child: Image.asset('assets/images/img_1.png', fit: BoxFit.cover),
           ),
 
-          // Main content
-          SafeArea(
-            child: Column(
-              children: [
-                // Header
-                _buildHeader(),
+          // Animated particles background
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _particleAnimationController,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: ParticlePainter(
+                    particles: _particles,
+                    animationValue: _particleAnimationController.value,
+                  ),
+                );
+              },
+            ),
+          ),
 
-                // Main content
-                Expanded(child: _buildMainContent()),
-              ],
+          // Scrollable content
+          SafeArea(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: Column(
+                children: [
+                  // Header
+                  _buildHeader(),
+
+                  // Main content
+                  _buildMainContent(),
+                ],
+              ),
             ),
           ),
         ],
@@ -96,15 +183,16 @@ class _LandingViewState extends State<LandingView>
     return ResponsiveBuilder(
       builder: (context, screenSize) {
         return Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: ResponsiveUtils.getResponsiveHorizontalPadding(context),
-            vertical: ResponsiveUtils.getResponsiveSpacing(
-              context,
-              mobile: 16,
-              tablet: 20,
-              desktop: 24,
-              largeDesktop: 28,
-              extraLargeDesktop: 32,
+          padding: ResponsiveUtils.getResponsiveHorizontalPadding(context).add(
+            EdgeInsets.symmetric(
+              vertical: ResponsiveUtils.getResponsiveSpacing(
+                context,
+                mobile: 16,
+                tablet: 20,
+                desktop: 24,
+                largeDesktop: 28,
+                extraLargeDesktop: 32,
+              ),
             ),
           ),
           child: _buildHeaderContent(screenSize),
@@ -280,46 +368,58 @@ class _LandingViewState extends State<LandingView>
   }
 
   Widget _buildMainContent() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: ResponsiveUtils.getResponsiveHorizontalPadding(context),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Main headline
-            _buildHeadline(),
+    return Container(
+      height:
+          MediaQuery.of(context).size.height -
+          MediaQuery.of(context).padding.top -
+          MediaQuery.of(context).padding.bottom -
+          ResponsiveUtils.getResponsiveContainerHeight(
+            context,
+            mobile: 80,
+            tablet: 100,
+            desktop: 120,
+            largeDesktop: 140,
+            extraLargeDesktop: 160,
+          ),
+      child: Center(
+        child: Padding(
+          padding: ResponsiveUtils.getResponsiveHorizontalPadding(context),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Main headline
+              _buildHeadline(),
 
-            SizedBox(
-              height: ResponsiveUtils.getResponsiveSpacing(
-                context,
-                mobile: 32,
-                tablet: 36,
-                desktop: 40,
-                largeDesktop: 44,
-                extraLargeDesktop: 48,
+              SizedBox(
+                height: ResponsiveUtils.getResponsiveSpacing(
+                  context,
+                  mobile: 32,
+                  tablet: 36,
+                  desktop: 40,
+                  largeDesktop: 44,
+                  extraLargeDesktop: 48,
+                ),
               ),
-            ),
 
-            // Subtitle
-            _buildSubtitle(),
+              // Subtitle
+              _buildSubtitle(),
 
-            SizedBox(
-              height: ResponsiveUtils.getResponsiveSpacing(
-                context,
-                mobile: 48,
-                tablet: 52,
-                desktop: 56,
-                largeDesktop: 60,
-                extraLargeDesktop: 64,
+              SizedBox(
+                height: ResponsiveUtils.getResponsiveSpacing(
+                  context,
+                  mobile: 48,
+                  tablet: 52,
+                  desktop: 56,
+                  largeDesktop: 60,
+                  extraLargeDesktop: 64,
+                ),
               ),
-            ),
 
-            // CTA Button
-            _buildAnimatedCTAButton(),
-          ],
+              // CTA Button
+              _buildAnimatedCTAButton(),
+            ],
+          ),
         ),
       ),
     );
@@ -484,7 +584,7 @@ class _LandingViewState extends State<LandingView>
             _buttonScaleAnimationController.reverse();
           },
           onTap: () {
-            // Navigate to dashboard
+            // Navigate to workspace dashboard
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -626,5 +726,47 @@ class _LandingViewState extends State<LandingView>
         ),
       ),
     );
+  }
+}
+
+// Custom painter for particle animation
+class ParticlePainter extends CustomPainter {
+  final List<Particle> particles;
+  final double animationValue;
+
+  ParticlePainter({required this.particles, required this.animationValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final particle in particles) {
+      final paint = Paint()
+        ..color = particle.color.withOpacity(particle.opacity)
+        ..style = PaintingStyle.fill;
+
+      // Update particle position based on animation
+      final animatedX =
+          (particle.x + particle.vx * animationValue * 100) % size.width;
+      final animatedY =
+          (particle.y + particle.vy * animationValue * 100) % size.height;
+
+      // Draw particle
+      canvas.drawCircle(Offset(animatedX, animatedY), particle.size, paint);
+
+      // Add glow effect
+      final glowPaint = Paint()
+        ..color = particle.color.withOpacity(particle.opacity * 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+
+      canvas.drawCircle(
+        Offset(animatedX, animatedY),
+        particle.size * 2,
+        glowPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(ParticlePainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue;
   }
 }

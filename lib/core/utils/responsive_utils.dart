@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+
+enum ScreenSize { mobile, tablet, desktop, largeDesktop, extraLargeDesktop }
 
 class ResponsiveUtils {
-  // Breakpoints for different screen sizes
-  static const double mobileBreakpoint = 600;
-  static const double tabletBreakpoint = 900;
-  static const double desktopBreakpoint = 1200;
-  static const double largeDesktopBreakpoint = 1600;
-
-  // Get screen size category
+  // Get screen size based on width
   static ScreenSize getScreenSize(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
-    if (width < mobileBreakpoint) return ScreenSize.mobile;
-    if (width < tabletBreakpoint) return ScreenSize.tablet;
-    if (width < desktopBreakpoint) return ScreenSize.desktop;
-    if (width < largeDesktopBreakpoint) return ScreenSize.largeDesktop;
-    return ScreenSize.extraLargeDesktop;
+    if (width < 600) {
+      return ScreenSize.mobile;
+    } else if (width < 900) {
+      return ScreenSize.tablet;
+    } else if (width < 1200) {
+      return ScreenSize.desktop;
+    } else if (width < 1600) {
+      return ScreenSize.largeDesktop;
+    } else {
+      return ScreenSize.extraLargeDesktop;
+    }
   }
 
   // Check if current screen is mobile
@@ -31,18 +33,20 @@ class ResponsiveUtils {
 
   // Check if current screen is desktop
   static bool isDesktop(BuildContext context) {
-    final size = getScreenSize(context);
-    return size == ScreenSize.desktop ||
-        size == ScreenSize.largeDesktop ||
-        size == ScreenSize.extraLargeDesktop;
+    return getScreenSize(context) == ScreenSize.desktop;
   }
 
-  // Check if current platform is web
-  static bool isWeb() {
-    return !Platform.isAndroid && !Platform.isIOS;
+  // Check if current screen is large desktop
+  static bool isLargeDesktop(BuildContext context) {
+    return getScreenSize(context) == ScreenSize.largeDesktop;
   }
 
-  // Get responsive padding based on screen size
+  // Check if current screen is extra large desktop
+  static bool isExtraLargeDesktop(BuildContext context) {
+    return getScreenSize(context) == ScreenSize.extraLargeDesktop;
+  }
+
+  // Get responsive padding
   static EdgeInsets getResponsivePadding(BuildContext context) {
     final screenSize = getScreenSize(context);
 
@@ -57,49 +61,6 @@ class ResponsiveUtils {
         return const EdgeInsets.all(40.0);
       case ScreenSize.extraLargeDesktop:
         return const EdgeInsets.all(48.0);
-    }
-  }
-
-  // Get responsive horizontal padding
-  static double getResponsiveHorizontalPadding(BuildContext context) {
-    final screenSize = getScreenSize(context);
-
-    switch (screenSize) {
-      case ScreenSize.mobile:
-        return 20.0;
-      case ScreenSize.tablet:
-        return 40.0;
-      case ScreenSize.desktop:
-        return 60.0;
-      case ScreenSize.largeDesktop:
-        return 80.0;
-      case ScreenSize.extraLargeDesktop:
-        return 100.0;
-    }
-  }
-
-  // Get responsive font size
-  static double getResponsiveFontSize(
-    BuildContext context, {
-    required double mobile,
-    required double tablet,
-    required double desktop,
-    double? largeDesktop,
-    double? extraLargeDesktop,
-  }) {
-    final screenSize = getScreenSize(context);
-
-    switch (screenSize) {
-      case ScreenSize.mobile:
-        return mobile;
-      case ScreenSize.tablet:
-        return tablet;
-      case ScreenSize.desktop:
-        return desktop;
-      case ScreenSize.largeDesktop:
-        return largeDesktop ?? desktop;
-      case ScreenSize.extraLargeDesktop:
-        return extraLargeDesktop ?? largeDesktop ?? desktop;
     }
   }
 
@@ -128,29 +89,53 @@ class ResponsiveUtils {
     }
   }
 
-  // Get responsive container width
-  static double getResponsiveContainerWidth(
+  // Get responsive font size
+  static double getResponsiveFontSize(
     BuildContext context, {
-    double? mobile,
-    double? tablet,
-    double? desktop,
+    required double mobile,
+    required double tablet,
+    required double desktop,
     double? largeDesktop,
     double? extraLargeDesktop,
   }) {
     final screenSize = getScreenSize(context);
-    final screenWidth = MediaQuery.of(context).size.width;
 
     switch (screenSize) {
       case ScreenSize.mobile:
-        return mobile ?? screenWidth * 0.9;
+        return mobile;
       case ScreenSize.tablet:
-        return tablet ?? screenWidth * 0.8;
+        return tablet;
       case ScreenSize.desktop:
-        return desktop ?? screenWidth * 0.7;
+        return desktop;
       case ScreenSize.largeDesktop:
-        return largeDesktop ?? screenWidth * 0.6;
+        return largeDesktop ?? desktop;
       case ScreenSize.extraLargeDesktop:
-        return extraLargeDesktop ?? screenWidth * 0.5;
+        return extraLargeDesktop ?? largeDesktop ?? desktop;
+    }
+  }
+
+  // Get responsive container width
+  static double getResponsiveContainerWidth(
+    BuildContext context, {
+    required double mobile,
+    required double tablet,
+    required double desktop,
+    double? largeDesktop,
+    double? extraLargeDesktop,
+  }) {
+    final screenSize = getScreenSize(context);
+
+    switch (screenSize) {
+      case ScreenSize.mobile:
+        return mobile;
+      case ScreenSize.tablet:
+        return tablet;
+      case ScreenSize.desktop:
+        return desktop;
+      case ScreenSize.largeDesktop:
+        return largeDesktop ?? desktop;
+      case ScreenSize.extraLargeDesktop:
+        return extraLargeDesktop ?? largeDesktop ?? desktop;
     }
   }
 
@@ -228,6 +213,81 @@ class ResponsiveUtils {
         return extraLargeDesktop ?? largeDesktop ?? desktop;
     }
   }
-}
 
-enum ScreenSize { mobile, tablet, desktop, largeDesktop, extraLargeDesktop }
+  // Get responsive content max width
+  static double getResponsiveContentMaxWidth(BuildContext context) {
+    final screenSize = getScreenSize(context);
+
+    switch (screenSize) {
+      case ScreenSize.mobile:
+        return double.infinity;
+      case ScreenSize.tablet:
+        return 800.0;
+      case ScreenSize.desktop:
+        return 1200.0;
+      case ScreenSize.largeDesktop:
+        return 1400.0;
+      case ScreenSize.extraLargeDesktop:
+        return 1600.0;
+    }
+  }
+
+  // Get responsive grid columns
+  static int getResponsiveGridColumns(BuildContext context) {
+    final screenSize = getScreenSize(context);
+
+    switch (screenSize) {
+      case ScreenSize.mobile:
+        return 1;
+      case ScreenSize.tablet:
+        return 2;
+      case ScreenSize.desktop:
+        return 3;
+      case ScreenSize.largeDesktop:
+        return 4;
+      case ScreenSize.extraLargeDesktop:
+        return 5;
+    }
+  }
+
+  // Get responsive horizontal padding
+  static EdgeInsets getResponsiveHorizontalPadding(BuildContext context) {
+    final screenSize = getScreenSize(context);
+
+    switch (screenSize) {
+      case ScreenSize.mobile:
+        return const EdgeInsets.symmetric(horizontal: 16.0);
+      case ScreenSize.tablet:
+        return const EdgeInsets.symmetric(horizontal: 24.0);
+      case ScreenSize.desktop:
+        return const EdgeInsets.symmetric(horizontal: 32.0);
+      case ScreenSize.largeDesktop:
+        return const EdgeInsets.symmetric(horizontal: 40.0);
+      case ScreenSize.extraLargeDesktop:
+        return const EdgeInsets.symmetric(horizontal: 48.0);
+    }
+  }
+
+  // Get responsive aspect ratio
+  static double getResponsiveAspectRatio(BuildContext context) {
+    final screenSize = getScreenSize(context);
+
+    switch (screenSize) {
+      case ScreenSize.mobile:
+        return 0.8;
+      case ScreenSize.tablet:
+        return 0.9;
+      case ScreenSize.desktop:
+        return 1.0;
+      case ScreenSize.largeDesktop:
+        return 1.1;
+      case ScreenSize.extraLargeDesktop:
+        return 1.2;
+    }
+  }
+
+  // Check if platform is web
+  static bool isWeb() {
+    return kIsWeb;
+  }
+}

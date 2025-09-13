@@ -34,17 +34,35 @@ class ResponsiveScrollDemoView extends StatelessWidget {
           constraints: BoxConstraints(
             maxWidth: ResponsiveUtils.getResponsiveContentMaxWidth(context),
           ),
-          child: ResponsiveColumn(
-            spacing: ResponsiveUtils.getResponsiveSpacing(
-              context,
-              mobile: 24.0,
-              tablet: 28.0,
-              desktop: 32.0,
-            ),
+          child: Column(
             children: [
               _buildScreenInfoCard(context),
+              SizedBox(
+                height: ResponsiveUtils.getResponsiveSpacing(
+                  context,
+                  mobile: 24.0,
+                  tablet: 28.0,
+                  desktop: 32.0,
+                ),
+              ),
               _buildHorizontalScrollDemo(context),
+              SizedBox(
+                height: ResponsiveUtils.getResponsiveSpacing(
+                  context,
+                  mobile: 24.0,
+                  tablet: 28.0,
+                  desktop: 32.0,
+                ),
+              ),
               _buildFlexibleGridDemo(context),
+              SizedBox(
+                height: ResponsiveUtils.getResponsiveSpacing(
+                  context,
+                  mobile: 24.0,
+                  tablet: 28.0,
+                  desktop: 32.0,
+                ),
+              ),
               _buildResponsiveRowDemo(context),
             ],
           ),
@@ -82,8 +100,7 @@ class ResponsiveScrollDemoView extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: ResponsiveColumn(
-        spacing: 16.0,
+      child: Column(
         children: [
           Row(
             children: [
@@ -221,8 +238,7 @@ class ResponsiveScrollDemoView extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: ResponsiveColumn(
-        spacing: 20.0,
+      child: Column(
         children: [
           Row(
             children: [
@@ -355,8 +371,7 @@ class ResponsiveScrollDemoView extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: ResponsiveColumn(
-        spacing: 20.0,
+      child: Column(
         children: [
           Row(
             children: [
@@ -401,8 +416,7 @@ class ResponsiveScrollDemoView extends StatelessWidget {
             ],
           ),
           ResponsiveFlexibleGrid(
-            crossAxisCount: 3,
-            itemWidth: 180.0, // Fixed width for each grid item
+            maxCrossAxisExtent: 180.0,
             children: List.generate(6, (index) {
               return Container(
                 padding: const EdgeInsets.all(20),
@@ -487,8 +501,7 @@ class ResponsiveScrollDemoView extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: ResponsiveColumn(
-        spacing: 20.0,
+      child: Column(
         children: [
           Row(
             children: [
