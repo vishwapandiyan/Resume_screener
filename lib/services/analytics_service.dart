@@ -9,7 +9,7 @@ class AnalyticsService {
           baseUrl ??
           const String.fromEnvironment(
             'ATS_BASE_URL',
-            defaultValue: 'https://0da70a85088d.ngrok-free.app',
+            defaultValue: 'https://1ac54b164b07.ngrok-free.app',
           );
 
   Uri _uri(String path) {
