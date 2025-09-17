@@ -25,7 +25,7 @@ class GradientButton extends StatefulWidget {
 class _GradientButtonState extends State<GradientButton>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
-  late Animation<double> _rotationAnimation;
+  // late Animation<double> _rotationAnimation;
 
   @override
   void initState() {
@@ -36,9 +36,9 @@ class _GradientButtonState extends State<GradientButton>
       ), // Slowed down from 3 seconds to 6 seconds
       vsync: this,
     );
-    _rotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.linear),
-    );
+    // _rotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    //   CurvedAnimation(parent: _animationController, curve: Curves.linear),
+    // );
     _animationController.repeat();
   }
 

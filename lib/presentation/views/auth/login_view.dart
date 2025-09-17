@@ -996,7 +996,7 @@ class _LoginViewState extends State<LoginView> with TickerProviderStateMixin {
           ),
           child: ElevatedButton(
             onPressed: () {
-              print("Signup button pressed"); // Debug print
+              debugPrint("Signup button pressed"); // Debug print
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SignupView()),

@@ -88,7 +88,6 @@ class ProcessedResume {
 class AtsConfig {
   static const String baseUrl = String.fromEnvironment(
     'ATS_BASE_URL',
-    defaultValue: 'https://9f8d9cdbebdd.ngrok.app',
+    defaultValue: 'https://0da70a85088d.ngrok-free.app',
   );
 }
-

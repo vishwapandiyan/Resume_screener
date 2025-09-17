@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:glow_container/glow_container.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive_utils.dart';
 import '../../core/widgets/responsive_layout.dart';
 import '../../services/llama_service.dart';
-import 'ats_results_view.dart';
 import 'processing_view.dart';
+import 'resume_library_view.dart';
+import 'analytics_view.dart';
 
 class WorkspaceCreationView extends StatefulWidget {
   const WorkspaceCreationView({super.key});
@@ -303,7 +303,10 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -314,7 +317,9 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Icon(Icons.auto_awesome, size: 16),
@@ -628,18 +633,6 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedFiles.removeAt(index);
-                        });
-                      },
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppTheme.accentRed,
-                        size: 20,
-                      ),
-                    ),
                   ],
                 ),
               );
@@ -909,7 +902,9 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
 
     try {
       // Generate title using LLaMA API via Flask backend
-      final generatedTitle = await LlamaService.generateJobTitle(_jobDescriptionController.text);
+      final generatedTitle = await LlamaService.generateJobTitle(
+        _jobDescriptionController.text,
+      );
       _jobTitleController.text = generatedTitle;
 
       _showSuccessSnackBar('Job title generated successfully!');
@@ -918,65 +913,6 @@ class _WorkspaceCreationViewState extends State<WorkspaceCreationView> {
     } finally {
       setState(() {
         _isGeneratingTitle = false;
-      });
-    }
-  }
-
-  String _generateMockTitle(String description) {
-    // Simple mock title generation based on keywords
-    final keywords = description.toLowerCase();
-    if (keywords.contains('software') && keywords.contains('engineer')) {
-      return 'Software Engineer';
-    } else if (keywords.contains('data') && keywords.contains('scientist')) {
-      return 'Data Scientist';
-    } else if (keywords.contains('product') && keywords.contains('manager')) {
-      return 'Product Manager';
-    } else if (keywords.contains('designer')) {
-      return 'UI/UX Designer';
-    } else if (keywords.contains('marketing')) {
-      return 'Marketing Specialist';
-    } else {
-      return 'Professional Role';
-    }
-  }
-
-  Future<void> _processWorkspace() async {
-    setState(() {
-      _isProcessing = true;
-    });
-
-    try {
-      // Simulate processing time
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Prepare data for local processing
-      final filesData = _selectedFiles
-          .map(
-            (file) => {
-              'name': file.name,
-              'size': file.size,
-              'extension': file.extension,
-            },
-          )
-          .toList();
-
-      // Process workspace locally (UI-only mode)
-      // In a real implementation, this would save to local storage
-      print('Processing workspace:');
-      print('Job Title: ${_jobTitleController.text}');
-      print('Job Description: ${_jobDescriptionController.text}');
-      print('ATS Score: ${_atsScore.round()}');
-      print('Files: ${filesData.length} files');
-
-      _showSuccessSnackBar('Workspace processed successfully!');
-
-      // Navigate back to dashboard
-      Navigator.pop(context);
-    } catch (e) {
-      _showErrorSnackBar('Error processing workspace: $e');
-    } finally {
-      setState(() {
-        _isProcessing = false;
       });
     }
   }
